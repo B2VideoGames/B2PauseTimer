@@ -1,9 +1,14 @@
 require "graphics"
 require "math"
 
+dataref("b2pt_agl", "sim/flightmodel/position/y_agl")
+
+
 local b2pt_SoftwareVersion = 1
 local b2pt_timeToPause = 0              -- in epoch time
 local b2pt_pauseTimerActive = false
+local b2pt_pauseAltActive = false
+local b2pt_aglToPause = 0               -- in feet
 
 local b2pt_currentTimeX1 = 0
 local b2pt_currentTimeY1 = 0
@@ -19,6 +24,11 @@ local b2pt_secsUntilPauseY1 = 0
 local b2pt_secsUntilPauseX2 = 0
 local b2pt_secsUntilPauseY2 = 0
 
+local b2pt_aglX1 = 0
+local b2pt_aglY1 = 0
+local b2pt_aglX2 = 0
+local b2pt_aglY2 = 0
+
 do_every_draw("B2PauseTimer_everyDraw()")
 do_on_mouse_wheel("B2PauseTimer_onMouseWheel()")
 do_on_mouse_click("B2PauseTimer_mouseClick()")
@@ -29,6 +39,9 @@ do_on_mouse_click("B2PauseTimer_mouseClick()")
 --  56/255,181/255,74/255  -- green
 --  71/255,71/255,70/255   -- grey
 
+function B2PauseTimer_Meter2Feet(meter)
+    return meter * 3.28084
+end
 
 function B2PauseTimer_SetColor(colorNum)
     if     (colorNum == 1) then graphics.set_color(0/255,0/255,0/255,0.8)  -- black
@@ -86,29 +99,48 @@ function B2PauseTimer_DrawDots(x,y,cumW,cumH,colorNum)
     B2PauseTimer_DrawDot(x+(0.50*cumW),y-(0.75*cumH),cumW*0.35,cumW*0.35,colorNum)
 end
 
-function B2PauseTimer_DrawTime(hr,m,s,x,y,wh,ht,bTimer)
+function B2PauseTimer_DrawTime(hr,m,s,x,y,oWdth,oHgt,bTimer)
+    local cWdth = math.floor(oWdth / 6.5)
     local colorNum = 1
     if (b2pt_pauseTimerActive and bTimer) then
         colorNum = 2
     end
+
 -- draw_string(800,1100,"colorNum  " .. colorNum, "yellow")
 
-    B2PauseTimer_DrawNumber(x+(wh*0.0),y,wh,ht,math.floor(hr/10),colorNum)  
-    B2PauseTimer_DrawNumber(x+(wh*1.0),y,wh,ht,hr % 10,colorNum)            
+    B2PauseTimer_DrawNumber(x+(cWdth*0.0),y,cWdth,oHgt,math.floor(hr/10),colorNum)  
+    B2PauseTimer_DrawNumber(x+(cWdth*1.0),y,cWdth,oHgt,hr % 10,colorNum)            
     if (os.time() % 2 == 1) then
-        B2PauseTimer_DrawDots  (x+(wh*2.0),y,wh*0.25,ht,0)          
+        B2PauseTimer_DrawDots  (x+(cWdth*2.0),y,cWdth*0.25,oHgt,0)          
     else
-        B2PauseTimer_DrawDots  (x+(wh*2.0),y,wh*0.25,ht,colorNum)
+        B2PauseTimer_DrawDots  (x+(cWdth*2.0),y,cWdth*0.25,oHgt,colorNum)
     end
-    B2PauseTimer_DrawNumber(x+(wh*2.25),y,wh,ht,math.floor(m/10),colorNum)   
-    B2PauseTimer_DrawNumber(x+(wh*3.25),y,wh,ht,m % 10,colorNum)             
+    B2PauseTimer_DrawNumber(x+(cWdth*2.25),y,cWdth,oHgt,math.floor(m/10),colorNum)   
+    B2PauseTimer_DrawNumber(x+(cWdth*3.25),y,cWdth,oHgt,m % 10,colorNum)             
     if (os.time() % 2 == 1) then
-        B2PauseTimer_DrawDots  (x+(wh*4.25),y,wh*0.25,ht,0)          
+        B2PauseTimer_DrawDots  (x+(cWdth*4.25),y,cWdth*0.25,oHgt,0)          
     else
-        B2PauseTimer_DrawDots  (x+(wh*4.25),y,wh*0.25,ht,colorNum)
+        B2PauseTimer_DrawDots  (x+(cWdth*4.25),y,cWdth*0.25,oHgt,colorNum)
     end
-    B2PauseTimer_DrawNumber(x+(wh*4.5),y,wh,ht,math.floor(s/10),colorNum)   
-    B2PauseTimer_DrawNumber(x+(wh*5.5),y,wh,ht,s % 10,colorNum)             
+    B2PauseTimer_DrawNumber(x+(cWdth*4.5),y,cWdth,oHgt,math.floor(s/10),colorNum)   
+    B2PauseTimer_DrawNumber(x+(cWdth*5.5),y,cWdth,oHgt,s % 10,colorNum)             
+end
+
+function B2PauseTimer_DrawAlt(alt,x,y,oWdth,oHgt)
+    local colorNum = 1
+    local cWdth = math.floor(oWdth / 5)
+    if (alt < 0) then alt = 0 end
+    if (alt > 99999) then alt = 99999 end
+
+    if (b2pt_pauseAltActive) then colorNum = 2 end 
+
+--draw_string(800,1100,"alt  " .. alt .. "  " .. math.floor((alt%100000)/10000) .. "  " .. math.floor((alt%10000)/1000) .. "  " .. math.floor((alt%1000)/100) .. "  " .. math.floor((alt%100)/10) .. "  " .. math.floor((alt%10)/1), "yellow")
+
+    B2PauseTimer_DrawNumber(x+(cWdth*0),y,cWdth,oHgt,math.floor((alt%100000)/10000),colorNum)
+    B2PauseTimer_DrawNumber(x+(cWdth*1),y,cWdth,oHgt,math.floor((alt%10000)/1000),colorNum)
+    B2PauseTimer_DrawNumber(x+(cWdth*2),y,cWdth,oHgt,math.floor((alt%1000)/100),colorNum)
+    B2PauseTimer_DrawNumber(x+(cWdth*3),y,cWdth,oHgt,math.floor((alt%100)/10),colorNum)
+    B2PauseTimer_DrawNumber(x+(cWdth*4),y,cWdth,oHgt,math.floor((alt%10)/1),colorNum)
 end
 
 function B2PauseTimer_onMouseWheel()
@@ -140,6 +172,15 @@ function B2PauseTimer_onMouseWheel()
         end
         RESUME_MOUSE_WHEEL = true
     end
+
+    if (MOUSE_X >= b2pt_aglX1 and MOUSE_X <= b2pt_aglX2 and
+        MOUSE_Y >= b2pt_aglY2 and MOUSE_Y <= b2pt_aglY1) then 
+        -- mouse wheel over part of 'agl'
+        if (b2pt_aglToPause == 0) then b2pt_aglToPause = math.floor(B2PauseTimer_Meter2Feet(b2pt_agl)/100)*100 end
+        b2pt_aglToPause = b2pt_aglToPause + (MOUSE_WHEEL_CLICKS * 100)
+        if (math.abs(b2pt_aglToPause - B2PauseTimer_Meter2Feet(b2pt_agl)) > 250) then b2pt_pauseAltActive = true end
+        RESUME_MOUSE_WHEEL = true
+    end
 end
 
 function B2PauseTimer_mouseClick()
@@ -148,10 +189,20 @@ function B2PauseTimer_mouseClick()
         MOUSE_X >= b2pt_currentTimeX1 and MOUSE_X <= b2pt_currentTimeX2 and 
         MOUSE_Y >= b2pt_currentTimeY2 and MOUSE_Y <= b2pt_currentTimeY1) then
         RESUME_MOUSE_CLICK = true
-        -- reset and disable the timer
+        -- reset and disable the pause on timer
         b2pt_timeToPause = 0
         b2pt_pauseTimerActive = 0
     end
+
+    if (MOUSE_STATUS == "down" and 
+        MOUSE_X >= b2pt_aglX1 and MOUSE_X <= b2pt_aglX2 and
+        MOUSE_Y >= b2pt_aglY2 and MOUSE_Y <= b2pt_aglY1) then 
+        RESUME_MOUSE_CLICK = true
+        -- reset and disable the pause on alt
+        b2pt_aglToPause = 0
+        b2pt_pauseAltActive = false
+    end
+
 end
 
 function B2PauseTimer_everyDraw()
@@ -166,31 +217,34 @@ function B2PauseTimer_everyDraw()
 --    draw_string(800,1250,"pause at: " .. os.date("%X",b2pt_timeToPause) .. " [" .. b2pt_timeToPause .. "]","black")
 --    draw_string(800,1230,"pause in: " .. secsUntilPause .. "s","black")
 
+    local timeHeight = 25
+    local timeWidth = timeHeight*0.8*6.5  -- 0.8 makes readout nicer, 6x chars, .5x two blinky dots
+
     b2pt_currentTimeX1 = SCREEN_WIDTH*0.4
     b2pt_currentTimeY1 = SCREEN_HIGHT - 35
-    b2pt_currentTimeX2 = b2pt_currentTimeX1 + ((25*0.8) * 6.5)
-    b2pt_currentTimeY2 = b2pt_currentTimeY1 - 25
+    b2pt_currentTimeX2 = b2pt_currentTimeX1 + timeWidth
+    b2pt_currentTimeY2 = b2pt_currentTimeY1 - timeHeight
 
     -- width of 'time' is 6.5xwidth
-    B2PauseTimer_DrawTime (tTime["hour"],tTime["min"],tTime["sec"],b2pt_currentTimeX1,b2pt_currentTimeY1,25*0.8,25,false)
+    B2PauseTimer_DrawTime (tTime["hour"],tTime["min"],tTime["sec"],b2pt_currentTimeX1,b2pt_currentTimeY1,timeWidth,timeHeight,false)
 
     -- pause time
-    b2pt_pauseTimeX1 = b2pt_currentTimeX1 + (25*8)
+    b2pt_pauseTimeX1 = b2pt_currentTimeX1 + (timeWidth * 1.3)
     b2pt_pauseTimeY1 = b2pt_currentTimeY1
-    b2pt_pauseTimeX2 = b2pt_pauseTimeX1 + ((25*0.8) * 6.5)
-    b2pt_pauseTimeY2 = b2pt_pauseTimeY1 - 25
+    b2pt_pauseTimeX2 = b2pt_pauseTimeX1 + timeWidth
+    b2pt_pauseTimeY2 = b2pt_pauseTimeY1 - timeHeight
 
-    b2pt_secsUntilPauseX1 = b2pt_pauseTimeX1 + (25*8)
+    b2pt_secsUntilPauseX1 = b2pt_pauseTimeX1 + (timeWidth * 1.3)
     b2pt_secsUntilPauseY1 = b2pt_currentTimeY1
-    b2pt_secsUntilPauseX2 = b2pt_secsUntilPauseX1 + ((25*0.8) * 6.5)
-    b2pt_secsUntilPauseY2 = b2pt_secsUntilPauseY1 - 25
+    b2pt_secsUntilPauseX2 = b2pt_secsUntilPauseX1 + timeWidth
+    b2pt_secsUntilPauseY2 = b2pt_secsUntilPauseY1 - timeHeight
 
     if (b2pt_timeToPause == 0) then
-        B2PauseTimer_DrawTime (tTime["hour"],tTime["min"],tTime["sec"],b2pt_pauseTimeX1,b2pt_pauseTimeY1,25*0.8,25,false)
-        B2PauseTimer_DrawTime (0,0,0,b2pt_secsUntilPauseX1,b2pt_secsUntilPauseY1,25*0.8,25,false)
+        B2PauseTimer_DrawTime (tTime["hour"],tTime["min"],tTime["sec"],b2pt_pauseTimeX1,b2pt_pauseTimeY1,timeWidth,timeHeight,false)
+        B2PauseTimer_DrawTime (0,0,0,b2pt_secsUntilPauseX1,b2pt_secsUntilPauseY1,timeWidth,timeHeight,false)
     else
-        B2PauseTimer_DrawTime (os.date("%H",b2pt_timeToPause),os.date("%M",b2pt_timeToPause),os.date("%S",b2pt_timeToPause),b2pt_pauseTimeX1,b2pt_pauseTimeY1,25*0.8,25,true)
-        B2PauseTimer_DrawTime (math.floor(secsUntilPause/3600)%24,math.floor(secsUntilPause/60)%60,secsUntilPause%60,b2pt_secsUntilPauseX1,b2pt_secsUntilPauseY1,25*0.8,25,true)
+        B2PauseTimer_DrawTime (os.date("%H",b2pt_timeToPause),os.date("%M",b2pt_timeToPause),os.date("%S",b2pt_timeToPause),b2pt_pauseTimeX1,b2pt_pauseTimeY1,timeWidth,timeHeight,true)
+        B2PauseTimer_DrawTime (math.floor(secsUntilPause/3600)%24,math.floor(secsUntilPause/60)%60,secsUntilPause%60,b2pt_secsUntilPauseX1,b2pt_secsUntilPauseY1,timeWidth,timeHeight,true)
 
         -- do we pause?
         if (secsUntilPause > 5 and secsUntilPause < 86395) then b2pt_pauseTimerActive = true end
@@ -204,4 +258,23 @@ function B2PauseTimer_everyDraw()
         end
     end
 
+    b2pt_aglX1 = b2pt_secsUntilPauseX1 + (timeWidth * 1.3)
+    b2pt_aglY1 = b2pt_currentTimeY1
+    b2pt_aglX2 = b2pt_aglX1 + timeHeight*0.8*5  -- 0.8 makes readout nicer, 5x chars
+    b2pt_aglY2 = b2pt_aglY1 - timeHeight
+
+    if (b2pt_aglToPause == 0) then
+        B2PauseTimer_DrawAlt(B2PauseTimer_Meter2Feet(b2pt_agl),b2pt_aglX1,b2pt_aglY1,b2pt_aglX2-b2pt_aglX1,timeHeight)
+    else
+        B2PauseTimer_DrawAlt(b2pt_aglToPause,b2pt_aglX1,b2pt_aglY1,b2pt_aglX2-b2pt_aglX1,timeHeight)
+        -- do we pause?
+        if (b2pt_pauseAltActive and math.floor(B2PauseTimer_Meter2Feet(b2pt_agl)) == b2pt_aglToPause) then
+            b2pt_aglToPause = 0
+            b2pt_pauseAltActive = false
+
+            if (get("sim/time/sim_speed") > 0) then
+                command_once("sim/operation/pause_toggle")
+            end
+        end
+    end
 end
