@@ -3,7 +3,6 @@ require "math"
 
 dataref("b2pt_agl", "sim/flightmodel/position/y_agl")
 
-
 local b2pt_SoftwareVersion = 1
 local b2pt_pauseTimerActive = false
 local b2pt_epochTimePause = 0
@@ -30,9 +29,31 @@ local b2pt_aglY1 = 0
 local b2pt_aglX2 = 0
 local b2pt_aglY2 = 0
 
+local b2pt_masterCautionActive = false
+local b2pt_mcX1 = 0
+local b2pt_mcY1 = 0
+local b2pt_mcX2 = 0
+local b2pt_mcY2 = 0
+
+local b2pt_fuelFlowActive = false
+local b2pt_fuelFlow = {false,false,false,false,false,false,false,false} -- 8 engines
+local b2pt_ffX1 = 0
+local b2pt_ffY1 = 0
+local b2pt_ffX2 = 0
+local b2pt_ffY2 = 0
+local b2pt_minFuelFlow = 0.00001
+
+local b2pt_stallWarningActive = false
+local b2pt_stallWarningX1 = 0
+local b2pt_stallWarningY1 = 0
+local b2pt_stallWarningX2 = 0
+local b2pt_stallWarningY2 = 0
+
+
 do_every_draw("B2PauseTimer_everyDraw()")
 do_on_mouse_wheel("B2PauseTimer_onMouseWheel()")
 do_on_mouse_click("B2PauseTimer_mouseClick()")
+do_often("B2PauseTimer_everySec()")
 
 
 --  0/255,0/255,0/255      -- black
@@ -53,6 +74,8 @@ end
 
 function B2PauseTimer_DrawHorizontal(x, y, pixW, pixH, bActive, colorNum)
     if (bActive) then B2PauseTimer_SetColor(colorNum) else B2PauseTimer_SetColor(0) end
+    pixW = math.ceil(pixW)
+    pixH = math.ceil(pixH)
     graphics.draw_rectangle(x+pixH,y+pixH,x+pixW-pixH,y-pixH)
     graphics.draw_triangle(x,y,x+pixH,y+pixH,x+pixH,y-pixH)
     graphics.draw_triangle(x+pixW,y,x+pixW-pixH,y-pixH,x+pixW-pixH,y+pixH)
@@ -60,6 +83,8 @@ end
 
 function B2PauseTimer_DrawVertical(x, y, pixW, pixH, bActive, colorNum)
     if (bActive) then B2PauseTimer_SetColor(colorNum) else B2PauseTimer_SetColor(0) end
+    pixW = math.ceil(pixW)
+    pixH = math.ceil(pixH)
     graphics.draw_rectangle(x-pixW,y-pixW,x+pixW,y-pixH+pixW)
     graphics.draw_triangle(x,y,x+pixW,y-pixW,x-pixW,y-pixW)
     graphics.draw_triangle(x-pixW,y-pixH+pixW,x+pixW,y-pixH+pixW,x,y-pixH)
@@ -79,9 +104,9 @@ function B2PauseTimer_DrawNumber(x,y,cumW,cumH,num,colorNum)
                    {true,  true,  true,  true,  true,  true,  true},  -- 8  .
                    {true,  true,  true,  true,  true,  false, true}   -- 9  .
                    }
-    B2PauseTimer_DrawHorizontal(x+(0.10*cumW),y-(0.05*cumH),cumW*0.80,cumH*0.04,data[index][1],colorNum)
-    B2PauseTimer_DrawHorizontal(x+(0.10*cumW),y-(0.50*cumH),cumW*0.80,cumH*0.04,data[index][2],colorNum)
-    B2PauseTimer_DrawHorizontal(x+(0.10*cumW),y-(0.95*cumH),cumW*0.80,cumH*0.04,data[index][3],colorNum)
+    B2PauseTimer_DrawHorizontal(x+(0.10*cumW),y-(0.05*cumH),cumW*0.80,cumH*0.02,data[index][1],colorNum)
+    B2PauseTimer_DrawHorizontal(x+(0.10*cumW),y-(0.50*cumH),cumW*0.80,cumH*0.02,data[index][2],colorNum)
+    B2PauseTimer_DrawHorizontal(x+(0.10*cumW),y-(0.95*cumH),cumW*0.80,cumH*0.02,data[index][3],colorNum)
 
     B2PauseTimer_DrawVertical  (x+(0.10*cumW),y-(0.05*cumH),cumW*0.04,cumH*0.45,data[index][4],colorNum)
     B2PauseTimer_DrawVertical  (x+(0.90*cumW),y-(0.05*cumH),cumW*0.04,cumH*0.45,data[index][5],colorNum)
@@ -131,6 +156,16 @@ function B2PauseTimer_DrawAlt(alt,x,y,oWdth,oHgt)
     B2PauseTimer_DrawNumber(x+(cWdth*2),y,cWdth,oHgt,math.floor((alt%1000)/100),colorNum)
     B2PauseTimer_DrawNumber(x+(cWdth*3),y,cWdth,oHgt,math.floor((alt%100)/10),colorNum)
     B2PauseTimer_DrawNumber(x+(cWdth*4),y,cWdth,oHgt,math.floor((alt%10)/1),colorNum)
+end
+
+function B2PauseTimer_DrawToggleBox(x,y,oWdth,oHgt,active)
+    B2PauseTimer_DrawHorizontal(x+(0.10*oWdth),y-(0.30*oHgt),oWdth*0.80,oHgt*0.02,true,1)
+    B2PauseTimer_DrawHorizontal(x+(0.10*oWdth),y-(0.95*oHgt),oWdth*0.80,oHgt*0.02,true,1)
+    B2PauseTimer_DrawVertical  (x+(0.10*oWdth),y-(0.30*oHgt),oWdth*0.03,oHgt*0.65,true,1)
+    B2PauseTimer_DrawVertical  (x+(0.90*oWdth),y-(0.30*oHgt),oWdth*0.03,oHgt*0.65,true,1)
+
+    if (active) then B2PauseTimer_SetColor(2) else B2PauseTimer_SetColor(0) end
+    graphics.draw_rectangle(x+(0.17*oWdth),y-(0.35*oHgt),x+(0.83*oWdth),y-(0.90*oHgt))
 end
 
 function B2PauseTimer_onMouseWheel()
@@ -197,12 +232,60 @@ function B2PauseTimer_mouseClick()
     if (MOUSE_STATUS == "down" and 
         MOUSE_X >= b2pt_aglX1 and MOUSE_X <= b2pt_aglX2 and
         MOUSE_Y >= b2pt_aglY2 and MOUSE_Y <= b2pt_aglY1) then 
-        RESUME_MOUSE_CLICK = true
         -- reset and disable the pause on alt
+        RESUME_MOUSE_CLICK = true
         b2pt_pauseAltActive = false
         b2pt_aglToPause = 0
     end
 
+    if (MOUSE_STATUS == "down" and 
+        MOUSE_X >= b2pt_mcX1 and MOUSE_X <= b2pt_mcX2 and
+        MOUSE_Y >= b2pt_mcY2 and MOUSE_Y <= b2pt_mcY1) then 
+        -- reset and disable the pause master caution
+        RESUME_MOUSE_CLICK = true
+        if (b2pt_masterCautionActive) then
+            b2pt_masterCautionActive = false
+        else
+            b2pt_masterCautionActive = true
+        end
+    end
+
+    if (MOUSE_STATUS == "down" and 
+        MOUSE_X >= b2pt_ffX1 and MOUSE_X <= b2pt_ffX2 and
+        MOUSE_Y >= b2pt_ffY2 and MOUSE_Y <= b2pt_ffY1) then 
+        -- reset and disable the pause fuel flow
+        RESUME_MOUSE_CLICK = true
+        if (b2pt_fuelFlowActive) then
+            b2pt_fuelFlowActive = false
+        else
+            b2pt_fuelFlowActive = true
+        end
+    end
+
+    if (MOUSE_STATUS == "down" and 
+        MOUSE_X >= b2pt_stallWarningX1 and MOUSE_X <= b2pt_stallWarningX2 and
+        MOUSE_Y >= b2pt_stallWarningY2 and MOUSE_Y <= b2pt_stallWarningY1) then 
+        -- reset and disable the pause stall warning
+        RESUME_MOUSE_CLICK = true
+        if (b2pt_stallWarningActive) then
+            b2pt_stallWarningActive = false
+        else
+            b2pt_stallWarningActive = true
+        end
+    end
+end
+
+function B2PauseTimer_everySec()
+    if (b2pt_fuelFlowActive) then
+        -- check fuel flow for going 'active'
+        for i = 1,8 do
+            if (b2pt_fuelFlow[i] == false) then
+                if (get("sim/cockpit2/engine/indicators/fuel_flow_kg_sec",i-1) > b2pt_minFuelFlow) then
+                    b2pt_fuelFlow[i] = true
+                end
+            end
+        end
+    end
 end
 
 function B2PauseTimer_everyDraw()
@@ -236,7 +319,7 @@ function B2PauseTimer_everyDraw()
 --    end
 
     local timeHeight = 25
-    local timeWidth = timeHeight*0.8*4.25  -- 0.8 makes readout nicer, 4x chars, .25x blinky dots
+    local timeWidth = timeHeight*0.7*4.25  -- 0.7 makes readout nicer, 4x chars, .25x blinky dots
 
     b2pt_currentTimeX1 = SCREEN_WIDTH*0.4
     b2pt_currentTimeY1 = SCREEN_HIGHT - 35
@@ -278,11 +361,12 @@ function B2PauseTimer_everyDraw()
 
     b2pt_aglX1 = b2pt_minUntilPauseX1 + (timeWidth * 1.4)
     b2pt_aglY1 = b2pt_currentTimeY1
-    b2pt_aglX2 = b2pt_aglX1 + timeHeight*0.8*5  -- 0.8 makes readout nicer, 5x chars
+    b2pt_aglX2 = b2pt_aglX1 + timeHeight*0.7*5  -- 0.7 makes readout nicer, 5x chars
     b2pt_aglY2 = b2pt_aglY1 - timeHeight
 
     if (b2pt_aglToPause == 0) then
         B2PauseTimer_DrawAlt(B2PauseTimer_Meter2Feet(b2pt_agl),b2pt_aglX1,b2pt_aglY1,b2pt_aglX2-b2pt_aglX1,timeHeight)
+--B2PauseTimer_DrawAlt(B2PauseTimer_Meter2Feet(b2pt_agl),100,1000,400*0.70*5,500)
     else
         B2PauseTimer_DrawAlt(b2pt_aglToPause,b2pt_aglX1,b2pt_aglY1,b2pt_aglX2-b2pt_aglX1,timeHeight)
         -- do we pause?
@@ -296,4 +380,79 @@ function B2PauseTimer_everyDraw()
             end
         end
     end
+
+    b2pt_mcX1 = b2pt_aglX1 + (timeWidth * 1.4)
+    b2pt_mcY1 = b2pt_currentTimeY1
+    b2pt_mcX2 = b2pt_mcX1 + timeHeight*0.7      -- 0.7 makes readout nicer
+    b2pt_mcY2 = b2pt_mcY1 - timeHeight 
+
+    B2PauseTimer_DrawToggleBox(b2pt_mcX1,b2pt_mcY1,timeHeight*0.7,timeHeight,b2pt_masterCautionActive)
+--B2PauseTimer_DrawToggleBox(1800,1000,500*0.7,500)
+    
+    if (b2pt_masterCautionActive) then
+        if (get("sim/cockpit/warnings/annunciators/master_caution") == 1) then
+            if (get("sim/time/sim_speed") > 0) then
+                command_once("sim/operation/pause_toggle")
+                b2pt_bWeCausedPause = true
+            end
+            b2pt_masterCautionActive = false
+        end
+    end
+
+    b2pt_ffX1 = b2pt_mcX2 + ((b2pt_mcX2-b2pt_mcX1)* 0.5)
+    b2pt_ffY1 = b2pt_currentTimeY1
+    b2pt_ffX2 = b2pt_ffX1 + timeHeight*0.7      -- 0.7 makes readout nicer
+    b2pt_ffY2 = b2pt_ffY1 - timeHeight 
+
+    B2PauseTimer_DrawToggleBox(b2pt_ffX1,b2pt_ffY1,timeHeight*0.7,timeHeight,b2pt_fuelFlowActive)
+    
+    if (b2pt_fuelFlowActive) then
+        for i = 1,8 do
+            if (b2pt_fuelFlow[i] == true) then
+                if (get("sim/cockpit2/engine/indicators/fuel_flow_kg_sec",i-1) < b2pt_minFuelFlow) then
+                    if (get("sim/time/sim_speed") > 0) then
+                        command_once("sim/operation/pause_toggle")
+                        b2pt_bWeCausedPause = true
+                    end
+                b2pt_fuelFlowActive = false
+                end
+            end
+        end
+    end
+
+--local j1 = get("sim/cockpit2/engine/indicators/fuel_flow_kg_sec",0)
+--local j2 = get("sim/cockpit2/engine/indicators/fuel_flow_kg_sec",1)
+--local j3 = get("sim/cockpit2/engine/indicators/fuel_flow_kg_sec",2)
+--local j4 = get("sim/cockpit2/engine/indicators/fuel_flow_kg_sec",3)
+--local j5 = get("sim/cockpit2/engine/indicators/fuel_flow_kg_sec",4)
+--local j6 = get("sim/cockpit2/engine/indicators/fuel_flow_kg_sec",5)
+--local j7 = get("sim/cockpit2/engine/indicators/fuel_flow_kg_sec",6)
+--local j8 = get("sim/cockpit2/engine/indicators/fuel_flow_kg_sec",7)
+--if (b2pt_fuelFlow[1] == false) then draw_string(800,1200,"false  " .. j1,"black") else draw_string(800,1200,"true  " .. j1,"yellow") end
+--if (b2pt_fuelFlow[2] == false) then draw_string(800,1175,"false  " .. j2,"black") else draw_string(800,1175,"true  " .. j2,"yellow") end
+--if (b2pt_fuelFlow[3] == false) then draw_string(800,1150,"false  " .. j3,"black") else draw_string(800,1150,"true  " .. j3,"yellow") end
+--if (b2pt_fuelFlow[4] == false) then draw_string(800,1125,"false  " .. j4,"black") else draw_string(800,1125,"true  " .. j4,"yellow") end
+--if (b2pt_fuelFlow[5] == false) then draw_string(800,1100,"false  " .. j5,"black") else draw_string(800,1100,"true  " .. j5,"yellow") end
+--if (b2pt_fuelFlow[6] == false) then draw_string(800,1075,"false  " .. j6,"black") else draw_string(800,1075,"true  " .. j6,"yellow") end
+--if (b2pt_fuelFlow[7] == false) then draw_string(800,1050,"false  " .. j7,"black") else draw_string(800,1050,"true  " .. j7,"yellow") end
+--if (b2pt_fuelFlow[8] == false) then draw_string(800,1025,"false  " .. j8,"black") else draw_string(800,1025,"true  " .. j8,"yellow") end
+
+    b2pt_stallWarningX1 = b2pt_ffX2 + ((b2pt_ffX2-b2pt_ffX1)* 0.5)
+    b2pt_stallWarningY1 = b2pt_currentTimeY1
+    b2pt_stallWarningX2 = b2pt_stallWarningX1 + timeHeight*0.7      -- 0.7 makes readout nicer
+    b2pt_stallWarningY2 = b2pt_stallWarningY1 - timeHeight 
+
+    B2PauseTimer_DrawToggleBox(b2pt_stallWarningX1,b2pt_stallWarningY1,timeHeight*0.7,timeHeight,b2pt_stallWarningActive)
+    
+    if (b2pt_stallWarningActive) then
+        if (get("sim/flightmodel/failures/stallwarning") == 1) then
+            if (get("sim/time/sim_speed") > 0) then
+                command_once("sim/operation/pause_toggle")
+                b2pt_bWeCausedPause = true
+            end
+            b2pt_stallWarningActive = false
+        end
+    end
 end
+
+
