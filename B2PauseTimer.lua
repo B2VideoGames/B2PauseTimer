@@ -1,6 +1,8 @@
 require "graphics"
 require "math"
 
+local b2pt_SoftwareVersion = 2.1
+
 local tmpStr = ""
 
 dataref("b2pt_agl", "sim/flightmodel/position/y_agl")
@@ -373,17 +375,28 @@ function B2PauseTimer_mouseClick()
     elseif (bDragging == true and MOUSE_STATUS == "drag") then
         mainX = MOUSE_X - 5
         mainY = MOUSE_Y + 15
+        bAutoPosition = false
 
         -- see if we are 'close enough' to original default to snap in place
         if (mainX > snapMainX - 20 and mainX < snapMainX + 20 and 
             mainY > snapMainY - 15 and mainY < snapMainY + 15) then
             mainX = snapMainX
             mainY = snapMainY
+            bAutoPosition = true
         end
     end
 end
 
 function B2PauseTimer_everySec()
+    if not(snapMainX == (SCREEN_WIDTH - 225)) then
+        bScreenSizeChanged = true
+        snapMainX = SCREEN_WIDTH - 225
+    end
+    if not(snapMainY == (SCREEN_HIGHT - 25)) then
+        bScreenSizeChanged = true
+        snapMainY = SCREEN_HIGHT - 25
+    end
+
     if (b2pt_fuelFlowActive) then
         -- check fuel flow for going 'active'
         for i = 1,8 do
@@ -400,6 +413,30 @@ function B2PauseTimer_everySec()
             b2pt_apDisconnectActive = true
         end
     end
+
+
+    if (bAutoPosition == true) then
+        -- handle screen width changes
+        if (bScreenSizeChanged) then
+            mainX = snapMainX
+            mainY = snapMainY
+        end
+    else -- manual position
+        -- make sure we aren't drawing off the screen
+        -- X:: from mainX to mainX+105
+        -- Y:: from mainY to mainY-200
+        if (mainX < 0) then
+            mainX = 0
+        elseif (mainX+105 > SCREEN_WIDTH) then 
+            mainX = SCREEN_WIDTH-105
+        end
+        if (mainY-200 < 0) then
+            mainY = 200
+        elseif (mainY+25 > SCREEN_HIGHT) then
+            mainY = SCREEN_HIGHT - 25
+        end
+    end
+
 end
 
 function B2PauseTimer_everyDraw()
@@ -444,10 +481,10 @@ function B2PauseTimer_everyDraw()
         draw_string(mainX+2,mainY-45,"PAUSE ON...",239/255,219/255,172/255)
         draw_string(mainX+20,mainY-55,"...time",239/255,219/255,172/255)
         draw_string(mainX+20,mainY-65,"...altitude",239/255,219/255,172/255)
-        draw_string(mainX+20,mainY-75,"...autopilot",239/255,219/255,172/255)
-        draw_string(mainX+20,mainY-85,"...fuel flow",239/255,219/255,172/255)
-        draw_string(mainX+20,mainY-95,"...stall",239/255,219/255,172/255)
-
+        draw_string(mainX+20,mainY-75,"...distance",239/255,219/255,172/255)
+        draw_string(mainX+20,mainY-85,"...autopilot",239/255,219/255,172/255)
+        draw_string(mainX+20,mainY-95,"...fuel flow",239/255,219/255,172/255)
+        draw_string(mainX+20,mainY-105,"...stall",239/255,219/255,172/255)
     end
 
     if (b2pt_bWeCausedPause) then
