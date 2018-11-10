@@ -276,7 +276,6 @@ dataRows.onTime.pauseCheck = function()
     end
 end
 dataRows.onAltitude.pauseCheck = function()
-tmpStr = string.format("%d %d",math.floor(B2PauseTimer_Meter2Feet(b2pt_agl)),b2pt_aglToPause)
     if not(b2pt_aglToPause == 0) then
         -- since we're only checking every sec, just see if we passed through the threshold
         if (b2pt_prevAglChecked == 0) then   -- first test, just get current alt for next pass
@@ -583,9 +582,6 @@ function B2PauseTimer_everyDraw()
     -- OpenGL graphics state initialization
     XPLMSetGraphicsState(0,0,0,1,1,0,0)
     graphics.set_width(1)  -- protect against any previous settings
-
-    draw_string(400,SCREEN_HIGHT - 100,tmpStr,128,128,128,1)
-
 
     if (b2pt_bWeCausedPause) then bDrawControlBox = true end
 
