@@ -433,35 +433,29 @@ end
 
 
 dataRows.onTime.box.mClick = function () 
-    tmpStr2 = tmpStr2 .. "onTime"
     b2pt_epochTimePause = 0
     if not(dataRows.onTime.box.bClicked) then dataRows.onTime.bActive = false end
     return nil
 end
 dataRows.onAltitude.box.mClick = function () 
-    tmpStr2 = tmpStr2 .. "onAltitude"
     b2pt_aglToPause = 0
     if not (dataRows.onAltitude.box.bClicked) then dataRows.onAltitude.bActive = false end
     return nil
 end
 dataRows.onDistance.box.mClick = function () 
-    tmpStr2 = tmpStr2 .. "onDistance"
     b2pt_distToPause = 0
     if not(dataRows.onDistance.box.bClicked) then dataRows.onDistance.bActive = false end
     return nil
 end
 dataRows.onAPDisconnect.box.mClick = function () 
-    tmpStr2 = tmpStr2 .. "onAPDisco"
     if not(dataRows.onAPDisconnect.box.bClicked) then dataRows.onAPDisconnect.bActive = false end
     return nil
 end
 dataRows.onFuelFlow.box.mClick = function () 
-    tmpStr2 = tmpStr2 .. "onFuelFlow"
     dataRows.onFuelFlow.bActive = dataRows.onFuelFlow.box.bClicked
     return nil
 end
 dataRows.onStall.box.mClick = function () 
-    tmpStr2 = tmpStr2 .. "onStall"
     dataRows.onStall.bActive = dataRows.onStall.box.bClicked
     return nil
 end
