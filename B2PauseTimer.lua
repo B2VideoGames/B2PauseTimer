@@ -24,6 +24,7 @@ local b2pt_SoftwareVersion = 1
 local b2pt_epochTimePause = 0
 local b2pt_pauseAltActive = false
 local b2pt_aglToPause = 0               -- in feet
+local b2pt_prevAglChecked = 0               -- in feet
 local b2pt_distToPause = 0              -- in nm
 local b2pt_bWeCausedPause = nil
 
@@ -273,14 +274,23 @@ dataRows.onTime.pauseCheck = function()
             B2PauseTimer_PauseCheck(dataRows.onTime)
         end
     end
-
 end
 dataRows.onAltitude.pauseCheck = function()
+tmpStr = string.format("%d %d",math.floor(B2PauseTimer_Meter2Feet(b2pt_agl)),b2pt_aglToPause)
     if not(b2pt_aglToPause == 0) then
-        if (math.floor(B2PauseTimer_Meter2Feet(b2pt_agl)) == b2pt_aglToPause) then
+        -- since we're only checking every sec, just see if we passed through the threshold
+        if (b2pt_prevAglChecked == 0) then   -- first test, just get current alt for next pass
+            b2pt_prevAglChecked = B2PauseTimer_Meter2Feet(b2pt_agl)
+            return
+        end 
+        if ((math.max(B2PauseTimer_Meter2Feet(b2pt_agl),b2pt_prevAglChecked) > b2pt_aglToPause) and
+            (math.min(B2PauseTimer_Meter2Feet(b2pt_agl),b2pt_prevAglChecked) < b2pt_aglToPause)) then
             b2pt_aglToPause = 0
+            b2pt_prevAglChecked = 0
             dataRows.onAltitude.bActive = false
             B2PauseTimer_PauseCheck(dataRows.onAltitude)
+        else
+            b2pt_prevAglChecked = B2PauseTimer_Meter2Feet(b2pt_agl)
         end
     end
 end
@@ -573,6 +583,9 @@ function B2PauseTimer_everyDraw()
     -- OpenGL graphics state initialization
     XPLMSetGraphicsState(0,0,0,1,1,0,0)
     graphics.set_width(1)  -- protect against any previous settings
+
+    draw_string(400,SCREEN_HIGHT - 100,tmpStr,128,128,128,1)
+
 
     if (b2pt_bWeCausedPause) then bDrawControlBox = true end
 
