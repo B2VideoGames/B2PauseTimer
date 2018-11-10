@@ -25,57 +25,21 @@ local b2pt_epochTimePause = 0
 local b2pt_pauseAltActive = false
 local b2pt_aglToPause = 0               -- in feet
 local b2pt_distToPause = 0              -- in nm
-local b2pt_bWeCausedPause = false
+local b2pt_bWeCausedPause = nil
 
-local b2pt_currentTimeX1 = 0
-local b2pt_currentTimeY1 = 0
-local b2pt_currentTimeX2 = 0
-local b2pt_currentTimeY2 = 0
-local b2pt_pauseTimeX1 = 0
-local b2pt_pauseTimeY1 = 0
-local b2pt_pauseTimeX2 = 0
-local b2pt_pauseTimeY2 = 0
-
-local b2pt_minUntilPauseX1 = 0
-local b2pt_minUntilPauseY1 = 0
-local b2pt_minUntilPauseX2 = 0
-local b2pt_minUntilPauseY2 = 0
-
-local b2pt_aglX1 = 0
-local b2pt_aglY1 = 0
-local b2pt_aglX2 = 0
-local b2pt_aglY2 = 0
-
-local b2pt_distX1 = 0
-local b2pt_distY1 = 0
-local b2pt_distX2 = 0
-local b2pt_distY2 = 0
-
-local b2pt_apDiscoX1 = 0
-local b2pt_apDiscoY1 = 0
-local b2pt_apDiscoX2 = 0
-local b2pt_apDiscoY2 = 0
 
 local b2pt_fuelFlow = {false,false,false,false,false,false,false,false} -- 8 engines
-local b2pt_ffX1 = 0
-local b2pt_ffY1 = 0
-local b2pt_ffX2 = 0
-local b2pt_ffY2 = 0
 local b2pt_minFuelFlow = 0.00001
 
-local b2pt_stallWarningX1 = 0
-local b2pt_stallWarningY1 = 0
-local b2pt_stallWarningX2 = 0
-local b2pt_stallWarningY2 = 0
 
 
 -- dataRows 
-local dataRows = {onTime         = {name="...on Time",      bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt={x=0, y=0, height=115, drawFunc, mWheel}},
-                  onAltitude     = {name="...on Altitude",  bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt={x=0, y=0, height=45, drawFunc, mWheel}},
-                  onDistance     = {name="...on Distance",  bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt={x=0, y=0, height=45, drawFunc, mWheel}},
-                  onAPDisconnect = {name="...on AP Disco",  bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt=nil},
-                  onFuelFlow     = {name="...on Fuel Flow", bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt=nil},
-                  onStall        = {name="...on Stall",     bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt=nil}
+local dataRows = {onTime         = {name="...on Time",      bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt={x=0, y=0, height=115, drawFunc, mWheel}, pauseCheck},
+                  onAltitude     = {name="...on Altitude",  bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt={x=0, y=0, height=45, drawFunc, mWheel}, pauseCheck},
+                  onDistance     = {name="...on Distance",  bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt={x=0, y=0, height=45, drawFunc, mWheel}, pauseCheck},
+                  onAPDisconnect = {name="...on AP Disco",  bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt=nil, pauseCheck},
+                  onFuelFlow     = {name="...on Fuel Flow", bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt=nil, pauseCheck},
+                  onStall        = {name="...on Stall",     bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt=nil, pauseCheck}
                   }
 
 do_every_draw("B2PauseTimer_everyDraw()")
@@ -245,7 +209,15 @@ function B2PauseTimer_DrawToggleRow(x,y,row) -- standard toggle box row
     else
         B2PauseTimer_DrawBoxSolid(x,y,x+105,y-15,8)         -- background, color 8
     end
-    B2PauseTimer_DrawBoxBorder(x,y,x+105,y-15,1,3)      -- background border, width 1, color 3
+    local flashColor = 3
+    local flashWidth = 1
+    if (b2pt_bWeCausedPause and b2pt_bWeCausedPause == row) then
+        if ((os.time() % 2) == 1) then 
+            flashColor = 2
+            flashWidth = 2
+        end
+    end
+    B2PauseTimer_DrawBoxBorder(x,y,x+105,y-15,flashWidth,flashColor)      -- background border, width/color variable
     B2PauseTimer_DrawBoxSolid(x+91,y-3,x+102,y-12,6)    -- toggle box, color 6
     B2PauseTimer_DrawBoxBorder(x+91,y-3,x+102,y-12,1,5) -- toggle box border, width 1, color 5
     draw_string(x+4,y-11,row.name,239/255,219/255,172/255)
@@ -267,7 +239,16 @@ function B2PauseTimer_DrawOptionalRow(x,yIn,row,colorNum) -- toggle box of optio
         else
             B2PauseTimer_DrawBoxSolid(x,y,x+105,y-row.opt.height,8)      -- background, color 8
         end
-        B2PauseTimer_DrawBoxBorder(x,y,x+105,y-row.opt.height,1,3)   -- background border, width 1, color 3
+
+        local flashColor = 3
+        local flashWidth = 1
+        if (b2pt_bWeCausedPause and b2pt_bWeCausedPause == row) then
+            if ((os.time() % 2) == 1) then 
+                flashColor = 2
+                flashWidth = 2
+            end
+        end
+        B2PauseTimer_DrawBoxBorder(x,y,x+105,y-row.opt.height,flashWidth,flashColor)   -- background border, width/color variable
         if (bComputeBoxes) then -- store location of the optional boxes
             row.opt.x = x
             row.opt.y = yIn
@@ -276,6 +257,107 @@ function B2PauseTimer_DrawOptionalRow(x,yIn,row,colorNum) -- toggle box of optio
         row.opt.drawFunc()
     end
     return y - 1    -- return bottom of box we drew
+end
+
+function B2PauseTimer_PauseCheck(caller)
+    if (get("sim/time/sim_speed") > 0) then
+        command_once("sim/operation/pause_toggle")
+        b2pt_bWeCausedPause = caller
+    end
+end
+dataRows.onTime.pauseCheck = function()
+    if not(b2pt_epochTimePause == 0) then
+        if ((math.floor(b2pt_epochTimePause/60) - (math.floor(os.time()/60))) == 0) then 
+            dataRows.onTime.bActive = false
+            b2pt_epochTimePause = 0
+            B2PauseTimer_PauseCheck(dataRows.onTime)
+        end
+    end
+
+end
+dataRows.onAltitude.pauseCheck = function()
+    if not(b2pt_aglToPause == 0) then
+        if (math.floor(B2PauseTimer_Meter2Feet(b2pt_agl)) == b2pt_aglToPause) then
+            b2pt_aglToPause = 0
+            dataRows.onAltitude.bActive = false
+            B2PauseTimer_PauseCheck(dataRows.onAltitude)
+        end
+    end
+end
+dataRows.onDistance.pauseCheck = function()
+    if not(b2pt_distToPause == 0) then
+        if ((b2pt_distToPause - B2PauseTimer_Meter2NM(b2pt_dist)) <= 0) then
+            b2pt_distToPause = 0
+            dataRows.onDistance.bActive = false
+            B2PauseTimer_PauseCheck(dataRows.onDistance)
+        end
+    end
+end
+dataRows.onAPDisconnect.pauseCheck = function()
+    if (get("sim/cockpit/warnings/annunciators/autopilot_disconnect") == 1) then
+        B2PauseTimer_PauseCheck(dataRows.onAPDisconnect)
+        dataRows.onAPDisconnect.bActive = false
+        dataRows.onAPDisconnect.box.bClicked = false
+    end
+end
+dataRows.onFuelFlow.pauseCheck = function()
+    for i,val in ipairs(b2pt_fuelFlow) do
+        if (val == true) then
+            if (get("sim/cockpit2/engine/indicators/fuel_flow_kg_sec",i-1) < b2pt_minFuelFlow) then
+                B2PauseTimer_PauseCheck(dataRows.onFuelFlow)
+                dataRows.onFuelFlow.bActive = false
+                dataRows.onFuelFlow.box.bClicked = false
+                for i in ipairs(b2pt_fuelFlow) do
+                    b2pt_fuelFlow[i] = false
+                end
+            end
+        end
+    end
+end
+dataRows.onStall.pauseCheck = function()
+    if (get("sim/flightmodel/failures/stallwarning") == 1) then
+        B2PauseTimer_PauseCheck(dataRows.onStall)
+        dataRows.onStall.bActive = false
+        dataRows.onStall.box.bClicked = false
+    end
+end
+
+
+dataRows.onTime.opt.drawFunc = function()
+    local y = dataRows.onTime.opt.y
+    local tTime = os.date("*t", os.time())
+    local minsUntilPause = math.floor(b2pt_epochTimePause/60) - (math.floor(os.time()/60))
+
+-- time
+    B2PauseTimer_DrawTime (tTime["hour"],
+                            tTime["min"],dataRows.onTime.opt.x+15,
+                            y-10,74.4,25,false)
+    y = y - 10 - 25  --offset and char height
+
+--pause time
+    if (b2pt_epochTimePause == 0) then
+        B2PauseTimer_DrawTime(tTime["hour"],tTime["min"],dataRows.onTime.opt.x+15,y-10,74.4,25,false)
+    else
+        B2PauseTimer_DrawTime(os.date("%H",b2pt_epochTimePause),os.date("%M",b2pt_epochTimePause),dataRows.onTime.opt.x+15,y-10,74.4,25,true)
+    end
+    y = y - 10 - 25  --offset and char height
+
+--time from now
+    if (b2pt_epochTimePause == 0) then
+        B2PauseTimer_DrawTime(0,0,dataRows.onTime.opt.x+15,y-10,74.4,25,false)
+    else
+        B2PauseTimer_DrawTime(math.floor(minsUntilPause/60),minsUntilPause%60,dataRows.onTime.opt.x+15,y-10,74.4,25,true)
+    end
+end
+dataRows.onAltitude.opt.drawFunc = function()
+    local agl = b2pt_aglToPause
+    if (b2pt_aglToPause == 0) then agl = B2PauseTimer_Meter2Feet(b2pt_agl) end
+    B2PauseTimer_DrawAlt(agl,dataRows.onAltitude.opt.x + 15,dataRows.onAltitude.opt.y - 10 , 87, 25)
+end
+dataRows.onDistance.opt.drawFunc = function()
+    local dist = b2pt_distToPause
+    if not(b2pt_distToPause == 0) then dist = b2pt_distToPause - B2PauseTimer_Meter2NM(b2pt_dist) end
+    B2PauseTimer_DrawDist(dist, dataRows.onDistance.opt.x + 20,dataRows.onDistance.opt.y - 10, 67, 25)
 end
 
 dataRows.onTime.opt.mWheel = function()
@@ -340,42 +422,6 @@ function B2PauseTimer_onMouseWheel()
     end
 end
 
-dataRows.onTime.opt.drawFunc = function()
-    local y = dataRows.onTime.opt.y
-    local tTime = os.date("*t", os.time())
-    local minsUntilPause = math.floor(b2pt_epochTimePause/60) - (math.floor(os.time()/60))
-
--- time
-    B2PauseTimer_DrawTime (tTime["hour"],
-                            tTime["min"],dataRows.onTime.opt.x+15,
-                            y-10,74.4,25,false)
-    y = y - 10 - 25  --offset and char height
-
---pause time
-    if (b2pt_epochTimePause == 0) then
-        B2PauseTimer_DrawTime(tTime["hour"],tTime["min"],dataRows.onTime.opt.x+15,y-10,74.4,25,false)
-    else
-        B2PauseTimer_DrawTime(os.date("%H",b2pt_epochTimePause),os.date("%M",b2pt_epochTimePause),dataRows.onTime.opt.x+15,y-10,74.4,25,true)
-    end
-    y = y - 10 - 25  --offset and char height
-
---time from now
-    if (b2pt_epochTimePause == 0) then
-        B2PauseTimer_DrawTime(0,0,dataRows.onTime.opt.x+15,y-10,74.4,25,false)
-    else
-        B2PauseTimer_DrawTime(math.floor(minsUntilPause/60),minsUntilPause%60,dataRows.onTime.opt.x+15,y-10,74.4,25,true)
-    end
-end
-dataRows.onAltitude.opt.drawFunc = function()
-    local agl = b2pt_aglToPause
-    if (b2pt_aglToPause == 0) then agl = B2PauseTimer_Meter2Feet(b2pt_agl) end
-    B2PauseTimer_DrawAlt(agl,dataRows.onAltitude.opt.x + 15,dataRows.onAltitude.opt.y - 10 , 87, 25)
-end
-dataRows.onDistance.opt.drawFunc = function()
-    local dist = b2pt_distToPause
-    if not(b2pt_distToPause == 0) then dist = b2pt_distToPause - B2PauseTimer_Meter2NM(b2pt_dist) end
-    B2PauseTimer_DrawDist(dist, dataRows.onDistance.opt.x + 20,dataRows.onDistance.opt.y - 10, 67, 25)
-end
 
 dataRows.onTime.box.mClick = function () 
     tmpStr2 = tmpStr2 .. "onTime"
@@ -431,7 +477,7 @@ function B2PauseTimer_mouseClick()
         MOUSE_X >= (mainX+55) and MOUSE_X <= (mainX+105) and 
         MOUSE_Y >= (mainY-24) and MOUSE_Y <= (mainY)) then
         RESUME_MOUSE_CLICK = true
-
+        if (b2pt_bWeCausedPause) then b2pt_bWeCausedPause = nil end
         bDrawControlBox = not bDrawControlBox
         if (bDrawControlBox) then bComputeBoxes = true end
         return
@@ -474,8 +520,8 @@ function B2PauseTimer_everySec()
 
     if (dataRows.onFuelFlow.bActive) then
         -- check fuel flow for going 'active'
-        for i = 1,8 do
-            if (b2pt_fuelFlow[i] == false) then
+        for i,val in ipairs(b2pt_fuelFlow) do
+            if (val == false) then
                 if (get("sim/cockpit2/engine/indicators/fuel_flow_kg_sec",i-1) > b2pt_minFuelFlow) then
                     b2pt_fuelFlow[i] = true
                 end
@@ -516,11 +562,19 @@ function B2PauseTimer_everySec()
         end
     end
 
+    -- check to see if pause conditions are met
+    for k,val in pairs(dataRows) do
+        if (val.bActive) then 
+            val.pauseCheck()
+        end
+    end
 end
 function B2PauseTimer_everyDraw()
     -- OpenGL graphics state initialization
     XPLMSetGraphicsState(0,0,0,1,1,0,0)
     graphics.set_width(1)  -- protect against any previous settings
+
+    if (b2pt_bWeCausedPause) then bDrawControlBox = true end
 
     if (bDrawControlBox == true or
         (MOUSE_X >= (mainX) and MOUSE_X <= (mainX+200) and 
@@ -541,13 +595,10 @@ function B2PauseTimer_everyDraw()
 
     local x = mainX
     local y = mainY-35
-    local x2 = x+105
-    local y2 = y-15
     graphics.set_width(1)  -- protect against any previous settings
 
     ----
     if (bComputeBoxes) then mainY2 = SCREEN_HIGHT end -- require new position of mainY2
-
         y = B2PauseTimer_DrawToggleRow(x,y,dataRows.onTime)
         y = B2PauseTimer_DrawOptionalRow(x,y,dataRows.onTime,8)
         y = B2PauseTimer_DrawToggleRow(x,y,dataRows.onAltitude)
@@ -557,176 +608,12 @@ function B2PauseTimer_everyDraw()
         y = B2PauseTimer_DrawToggleRow(x,y,dataRows.onAPDisconnect)
         y = B2PauseTimer_DrawToggleRow(x,y,dataRows.onFuelFlow)
         y = B2PauseTimer_DrawToggleRow(x,y,dataRows.onStall)
-
         bComputeBoxes = false -- DrawToggleRow calls do it
     end
 
     if (b2pt_bWeCausedPause) then
-        if ((os.time() % 2) == 1) then 
-            graphics.set_color(54/255,186/255,27/255,0.8)
-        else
-            graphics.set_color(186/255,143/255,27/255,0.8)
-        end
-    graphics.draw_rectangle(b2pt_currentTimeX1-10,b2pt_currentTimeY1+10,b2pt_aglX2+10,b2pt_aglY2-10)
-    end
-
-    local tTime = os.date("*t", os.time())
-    local minsUntilPause = math.floor(b2pt_epochTimePause/60) - (math.floor(os.time()/60))
-    if (b2pt_bWeCausedPause) then
         if (get("sim/time/sim_speed") > 0) then -- no longer paused
-            b2pt_bWeCausedPause = false
-        end
-    end
-
---draw_string(100,70,"tmpStr: " .. tmpStr , "yellow")
---draw_string(100,50,"tmpStr2: " .. tmpStr2 , "yellow")
-
---draw_string(800,1270,"dist " .. get("sim/flightmodel/controls/dist") , "yellow")
---draw_string(800,1250,"dist " .. B2PauseTimer_Meter2NM(get("sim/flightmodel/controls/dist")) , "yellow")
---draw_string(800,1230,"b2pt_distToPause " .. b2pt_distToPause , "yellow")
-
-    local timeHeight = 25
-    local timeWidth = timeHeight*0.7*4.25  -- 0.7 makes readout nicer, 4x chars, .25x blinky dots
-
-    b2pt_currentTimeX1 = SCREEN_WIDTH*0.4
-    b2pt_currentTimeY1 = SCREEN_HIGHT - 35
-    b2pt_currentTimeX2 = b2pt_currentTimeX1 + timeWidth
-    b2pt_currentTimeY2 = b2pt_currentTimeY1 - timeHeight
-
-    B2PauseTimer_DrawTime (tTime["hour"],tTime["min"],b2pt_currentTimeX1,b2pt_currentTimeY1,timeWidth,timeHeight,false)
-
-    -- ========================================================================================
-    -- pause time
-    b2pt_pauseTimeX1 = b2pt_currentTimeX1 + (timeWidth * 1.4)
-    b2pt_pauseTimeY1 = b2pt_currentTimeY1
-    b2pt_pauseTimeX2 = b2pt_pauseTimeX1 + timeWidth
-    b2pt_pauseTimeY2 = b2pt_pauseTimeY1 - timeHeight
-
-    b2pt_minUntilPauseX1 = b2pt_pauseTimeX1 + (timeWidth * 1.4)
-    b2pt_minUntilPauseY1 = b2pt_currentTimeY1
-    b2pt_minUntilPauseX2 = b2pt_minUntilPauseX1 + timeWidth
-    b2pt_minUntilPauseY2 = b2pt_minUntilPauseY1 - timeHeight
-
-    if (b2pt_epochTimePause == 0) then
-        B2PauseTimer_DrawTime (tTime["hour"],tTime["min"],b2pt_pauseTimeX1,b2pt_pauseTimeY1,timeWidth,timeHeight,false)
-        B2PauseTimer_DrawTime (0,0,b2pt_minUntilPauseX1,b2pt_minUntilPauseY1,timeWidth,timeHeight,false)
-    else
-        B2PauseTimer_DrawTime (os.date("%H",b2pt_epochTimePause),os.date("%M",b2pt_epochTimePause),b2pt_pauseTimeX1,b2pt_pauseTimeY1,timeWidth,timeHeight,true)
-        B2PauseTimer_DrawTime (math.floor(minsUntilPause/60),minsUntilPause%60,b2pt_minUntilPauseX1,b2pt_minUntilPauseY1,timeWidth,timeHeight,true)
-
-        -- do we pause?
-        if (dataRows.onTime.bActive and minsUntilPause == 0) then 
-            dataRows.onTime.bActive = false
-            b2pt_epochTimePause = 0
-            
-            if (get("sim/time/sim_speed") > 0) then
-                command_once("sim/operation/pause_toggle")
-                b2pt_bWeCausedPause = true
-            end
-        end
-    end
-
-    -- ========================================================================================
-    b2pt_aglX1 = b2pt_minUntilPauseX1 + (timeWidth * 1.4)
-    b2pt_aglY1 = b2pt_currentTimeY1
-    b2pt_aglX2 = b2pt_aglX1 + timeHeight*0.7*5  -- 0.7 makes readout nicer, 5x chars
-    b2pt_aglY2 = b2pt_aglY1 - timeHeight
-
-    if (b2pt_aglToPause == 0) then
-        B2PauseTimer_DrawAlt(B2PauseTimer_Meter2Feet(b2pt_agl),b2pt_aglX1,b2pt_aglY1,b2pt_aglX2-b2pt_aglX1,timeHeight)
-    else
-        B2PauseTimer_DrawAlt(b2pt_aglToPause,b2pt_aglX1,b2pt_aglY1,b2pt_aglX2-b2pt_aglX1,timeHeight)
-        -- do we pause?
-        if (dataRows.onAltitude.bActive and math.floor(B2PauseTimer_Meter2Feet(b2pt_agl)) == b2pt_aglToPause) then
-            b2pt_aglToPause = 0
-            dataRows.onAltitude.bActive = false
-
-            if (get("sim/time/sim_speed") > 0) then
-                command_once("sim/operation/pause_toggle")
-                b2pt_bWeCausedPause = true
-            end
-        end
-    end
-
-    -- ========================================================================================
-    b2pt_apDiscoX1 = b2pt_aglX1 + (timeWidth * 1.4)
-    b2pt_apDiscoY1 = b2pt_currentTimeY1
-    b2pt_apDiscoX2 = b2pt_apDiscoX1 + timeHeight*0.7      -- 0.7 makes readout nicer
-    b2pt_apDiscoY2 = b2pt_apDiscoY1 - timeHeight 
-
-    B2PauseTimer_DrawToggleBox(b2pt_apDiscoX1,b2pt_apDiscoY1,timeHeight*0.7,timeHeight,dataRows.onAPDisconnect.box.bClicked)
-    
-    if (dataRows.onAPDisconnect.bActive) then
-        if (get("sim/cockpit/warnings/annunciators/autopilot_disconnect") == 1) then
-            if (get("sim/time/sim_speed") > 0) then
-                command_once("sim/operation/pause_toggle")
-                b2pt_bWeCausedPause = true
-            end
-            dataRows.onAPDisconnect.bActive = false
-            dataRows.onAPDisconnect.box.bClicked = false
-        end
-    end
-
-    -- ========================================================================================
-    b2pt_ffX1 = b2pt_apDiscoX2 + ((b2pt_apDiscoX2-b2pt_apDiscoX1)* 0.5)
-    b2pt_ffY1 = b2pt_currentTimeY1
-    b2pt_ffX2 = b2pt_ffX1 + timeHeight*0.7      -- 0.7 makes readout nicer
-    b2pt_ffY2 = b2pt_ffY1 - timeHeight 
-
-    B2PauseTimer_DrawToggleBox(b2pt_ffX1,b2pt_ffY1,timeHeight*0.7,timeHeight,dataRows.onFuelFlow.bActive)
-    
-    if (dataRows.onFuelFlow.bActive) then
-        for i = 1,8 do
-            if (b2pt_fuelFlow[i] == true) then
-                if (get("sim/cockpit2/engine/indicators/fuel_flow_kg_sec",i-1) < b2pt_minFuelFlow) then
-                    if (get("sim/time/sim_speed") > 0) then
-                        command_once("sim/operation/pause_toggle")
-                        b2pt_bWeCausedPause = true
-                    end
-                dataRows.onFuelFlow.bActive = false
-                end
-            end
-        end
-    end
-
-    -- ========================================================================================
-    b2pt_stallWarningX1 = b2pt_ffX2 + ((b2pt_ffX2-b2pt_ffX1)* 0.5)
-    b2pt_stallWarningY1 = b2pt_currentTimeY1
-    b2pt_stallWarningX2 = b2pt_stallWarningX1 + timeHeight*0.7      -- 0.7 makes readout nicer
-    b2pt_stallWarningY2 = b2pt_stallWarningY1 - timeHeight 
-
-    B2PauseTimer_DrawToggleBox(b2pt_stallWarningX1,b2pt_stallWarningY1,timeHeight*0.7,timeHeight,dataRows.onStall.bActive)
-    
-    if (dataRows.onStall.bActive) then
-        if (get("sim/flightmodel/failures/stallwarning") == 1) then
-            if (get("sim/time/sim_speed") > 0) then
-                command_once("sim/operation/pause_toggle")
-                b2pt_bWeCausedPause = true
-            end
-            dataRows.onStall.bActive = false
-        end
-    end
-
-    -- ========================================================================================
-    b2pt_distX1 = b2pt_stallWarningX2 + (timeWidth * 0.4)
-    b2pt_distY1 = b2pt_currentTimeY1
-    b2pt_distX2 = b2pt_distX1 + timeHeight*0.7*4  -- 0.7 makes readout nicer, 4x chars
-    b2pt_distY2 = b2pt_distY1 - timeHeight
-
-    if (b2pt_distToPause == 0) then
-        B2PauseTimer_DrawDist(0,b2pt_distX1,b2pt_distY1,b2pt_distX2-b2pt_distX1,timeHeight)
-    else
-        local distanceRemaining = b2pt_distToPause - B2PauseTimer_Meter2NM(b2pt_dist)   -- in nm
-        B2PauseTimer_DrawDist(distanceRemaining,b2pt_distX1,b2pt_distY1,b2pt_distX2-b2pt_distX1,timeHeight)
-        -- do we pause?
-        if (dataRows.onDistance.bActive and (distanceRemaining <= 0)) then
-            b2pt_distToPause = 0
-            dataRows.onDistance.bActive = false
-
-            if (get("sim/time/sim_speed") > 0) then
-                command_once("sim/operation/pause_toggle")
-                b2pt_bWeCausedPause = true
-            end
+            b2pt_bWeCausedPause = nil
         end
     end
 end
