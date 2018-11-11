@@ -1,7 +1,7 @@
 require "graphics"
 require "math"
 
-local b2pt_SoftwareVersion = 2.1
+local b2pt_SoftwareVersion = 1.0
 
 dataref("b2pt_agl", "sim/flightmodel/position/y_agl")
 dataref("b2pt_dist", "sim/flightmodel/controls/dist")
@@ -24,7 +24,6 @@ local bScreenSizeChanged = true
 local bAutoPosition = true
 local bComputeBoxes = false
 
-local b2pt_SoftwareVersion = 1
 local b2pt_epochTimePause = 0
 local b2pt_pauseAltActive = false
 local b2pt_aglToPause = 0               -- in feet
@@ -626,7 +625,6 @@ function B2PauseTimer_everyDraw()
     local y = mainY-35
     graphics.set_width(1)  -- protect against any previous settings
 
-    ----
     if (bComputeBoxes) then mainY2 = SCREEN_HIGHT end -- require new position of mainY2
         y = B2PauseTimer_DrawToggleRow(x,y,dataRows.onTime)
         y = B2PauseTimer_DrawOptionalRow(x,y,dataRows.onTime,8)
