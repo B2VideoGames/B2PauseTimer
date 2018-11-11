@@ -3,9 +3,6 @@ require "math"
 
 local b2pt_SoftwareVersion = 2.1
 
-local tmpStr = ""
-local tmpStr2 = ""
-
 dataref("b2pt_agl", "sim/flightmodel/position/y_agl")
 dataref("b2pt_dist", "sim/flightmodel/controls/dist")
 
@@ -35,11 +32,8 @@ local b2pt_prevAglChecked = 0               -- in feet
 local b2pt_distToPause = 0              -- in nm
 local b2pt_bWeCausedPause = nil
 
-
 local b2pt_fuelFlow = {false,false,false,false,false,false,false,false} -- 8 engines
 local b2pt_minFuelFlow = 0.00001
-
-
 
 -- dataRows 
 local dataRows = {onTime         = {name="...on Time",      bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt={x=0, y=0, height=(wgtRowH*3)+40, drawFunc, mWheel, mClick}, pauseCheck},
@@ -55,12 +49,6 @@ do_on_mouse_wheel("B2PauseTimer_onMouseWheel()")
 do_on_mouse_click("B2PauseTimer_mouseClick()")
 do_often("B2PauseTimer_everySec()")
 
-
---  0/255,0/255,0/255      -- black
---  211/255,10/255,10/255  -- red
---  56/255,181/255,74/255  -- green
---  71/255,71/255,70/255   -- grey
-
 function B2PauseTimer_SetColor(colorNum)
     if     (colorNum == 1) then graphics.set_color(0/255,0/255,0/255,0.8)  -- black
     elseif (colorNum == 2) then graphics.set_color(211/255,10/255,10/255,0.8) -- red
@@ -71,7 +59,7 @@ function B2PauseTimer_SetColor(colorNum)
     elseif (colorNum == 7) then graphics.set_color(140/255,128/255,99/255,1)  -- fill in color
     elseif (colorNum == 8) then graphics.set_color(66/255, 66/255, 66/255, 1) -- dark gray
     elseif (colorNum == 9) then graphics.set_color(239/255,219/255,172/255, 1) -- text
-    elseif (colorNum ==10) then graphics.set_color(140/255,128/255,99/255,0.2)  -- fill in color (related to 6 and 7)
+    elseif (colorNum ==10) then graphics.set_color(140/255,128/255,99/255,0.2)  -- fill in color (related to 6 and 7)  -- digital 'off'
     elseif (colorNum ==11) then graphics.set_color(82/255,221/255,91/255,0.8) -- green
     else                        graphics.set_color(71/255,71/255,70/255,0.05)  -- grey and default
     end
@@ -184,15 +172,7 @@ function B2PauseTimer_DrawDist(dist,xIn,y,oWdth,oHgt)
     B2PauseTimer_DrawNumber(x+(cWdth*2),y,cWdth,oHgt,math.floor((nm%100)/10),colorNum)
     B2PauseTimer_DrawNumber(x+(cWdth*3),y,cWdth,oHgt,math.floor((nm%10)/1),colorNum)
 end
-function B2PauseTimer_DrawToggleBox(x,y,oWdth,oHgt,active)
-    B2PauseTimer_DrawHorizontal(x+(0.10*oWdth),y-(0.30*oHgt),oWdth*0.80,oHgt*0.02,true,1)
-    B2PauseTimer_DrawHorizontal(x+(0.10*oWdth),y-(0.95*oHgt),oWdth*0.80,oHgt*0.02,true,1)
-    B2PauseTimer_DrawVertical  (x+(0.10*oWdth),y-(0.30*oHgt),oWdth*0.03,oHgt*0.65,true,1)
-    B2PauseTimer_DrawVertical  (x+(0.90*oWdth),y-(0.30*oHgt),oWdth*0.03,oHgt*0.65,true,1)
 
-    if (active) then B2PauseTimer_SetColor(2) else B2PauseTimer_SetColor(0) end
-    graphics.draw_rectangle(x+(0.17*oWdth),y-(0.35*oHgt),x+(0.83*oWdth),y-(0.90*oHgt))
-end
 function B2PauseTimer_DrawBoxSolid(x1,y1,x2,y2,colorNum)
     B2PauseTimer_SetColor(colorNum)
     graphics.draw_rectangle(x1,y1,x2,y2)
@@ -232,6 +212,10 @@ function B2PauseTimer_DrawToggleRow(x,y,row) -- standard toggle box row
 
     -- if opt exists draw pulldown, otherwise box
     if (row.opt) then
+        if (row.bActive) then
+            B2PauseTimer_SetColor(2)
+            graphics.draw_triangle(x+wgtW-tBoxH-3,y-3,x+wgtW-3,y-3,x+wgtW-3-(tBoxH/2),y-wgtRowH+13)
+        end
         B2PauseTimer_SetColor(7)
         if (row.box.bClicked) then B2PauseTimer_SetColor(5) end
         graphics.set_width(2)
@@ -239,10 +223,13 @@ function B2PauseTimer_DrawToggleRow(x,y,row) -- standard toggle box row
         graphics.draw_line(x+wgtW-3,y-3,x+wgtW-3-(tBoxH/2),y-wgtRowH+13)
         graphics.draw_line(x+wgtW-3-(tBoxH/2),y-wgtRowH+13,x+wgtW-tBoxH-3,y-3)
     else
-        B2PauseTimer_DrawBoxSolid(x+wgtW-tBoxH-3,y-3,x+wgtW-3,y-wgtRowH+13,6)    -- toggle box, color 6
-        B2PauseTimer_DrawBoxBorder(x+wgtW-tBoxH-3,y-3,x+wgtW-3,y-wgtRowH+13,1,5) -- toggle box border, width 1, color 5
-        if (row.box.bClicked) then
-            B2PauseTimer_DrawBoxSolid(x+wgtW-tBoxH-1,y-5,x+wgtW-5,y-wgtRowH+15,2)    -- toggle box active, color 2
+        local borderColor = 7
+        local fillColor = 7
+        if (row.box.bClicked) then borderColor = 5 end
+        if (row.bActive) then fillColor = 2 end
+        B2PauseTimer_DrawBoxBorder(x+wgtW-tBoxH-3,y-3,x+wgtW-3,y-wgtRowH+13,2,borderColor) -- toggle box border, width 2, color 7
+        if (row.bActive or row.box.bClicked) then
+            B2PauseTimer_DrawBoxSolid(x+wgtW-tBoxH-1,y-5,x+wgtW-5,y-wgtRowH+15,fillColor)    -- toggle box active, color variable
         end
     end
     draw_string(x+4,y-(wgtRowH/2),row.name,239/255,219/255,172/255)
@@ -352,7 +339,6 @@ dataRows.onStall.pauseCheck = function()
     end
 end
 
-
 dataRows.onTime.opt.drawFunc = function()
     local y = dataRows.onTime.opt.y
     local tTime = os.date("*t", os.time())
@@ -369,7 +355,7 @@ dataRows.onTime.opt.drawFunc = function()
     if (b2pt_epochTimePause == 0) then
         B2PauseTimer_DrawTime(tTime["hour"],tTime["min"],dataRows.onTime.opt.x+5,y-10,wgtW*perDigital,wgtRowH,false)
     else
-        B2PauseTimer_DrawTime(os.date("%H",b2pt_epochTimePause),os.date("%M",b2pt_epochTimePause),dataRows.onTime.opt.x+10,y-10,wgtW*perDigital,wgtRowH,true)
+        B2PauseTimer_DrawTime(os.date("%H",b2pt_epochTimePause),os.date("%M",b2pt_epochTimePause),dataRows.onTime.opt.x+5,y-10,wgtW*perDigital,wgtRowH,true)
     end
     draw_string(dataRows.onTime.opt.x + (wgtW*perDigital)+perDigitsPad,y-(wgtRowH*1.0),"P At",239/255,219/255,172/255)
     y = y - 10 - wgtRowH  --offset and char height
@@ -378,7 +364,7 @@ dataRows.onTime.opt.drawFunc = function()
     if (b2pt_epochTimePause == 0) then
         B2PauseTimer_DrawTime(0,0,dataRows.onTime.opt.x+5,y-10,wgtW*perDigital,wgtRowH,false)
     else
-        B2PauseTimer_DrawTime(math.floor(minsUntilPause/60),minsUntilPause%60,dataRows.onTime.opt.x+10,y-10,wgtW*perDigital,wgtRowH,true)
+        B2PauseTimer_DrawTime(math.floor(minsUntilPause/60),minsUntilPause%60,dataRows.onTime.opt.x+5,y-10,wgtW*perDigital,wgtRowH,true)
     end
     draw_string(dataRows.onTime.opt.x + (wgtW*perDigital)+perDigitsPad,y-(wgtRowH*1.0),"P In",239/255,219/255,172/255)
 end
@@ -404,7 +390,7 @@ dataRows.onTime.opt.mWheel = function()
     -- need to determine if MOUSE_Y is over current time, pause time, or time until pause
     if (MOUSE_Y > dataRows.onTime.opt.y - (dataRows.onTime.opt.height / 3)) then
         -- just ignore this area
-        return nil
+        return
     end
 
     local currentTime = os.time()
@@ -465,39 +451,30 @@ end
 dataRows.onTime.opt.mClick = function () 
     b2pt_epochTimePause = 0
     dataRows.onTime.bActive = false
-    return nil
 end
 dataRows.onAltitude.opt.mClick = function () 
     b2pt_aglToPause = 0
     dataRows.onAltitude.bActive = false
-    return nil
 end
 dataRows.onDistance.opt.mClick = function () 
     b2pt_distToPause = 0
     dataRows.onDistance.bActive = false
-    return nil
 end
 
 dataRows.onTime.box.mClick = function () 
-    return nil
 end
 dataRows.onAltitude.box.mClick = function () 
-    return nil
 end
 dataRows.onDistance.box.mClick = function () 
-    return nil
 end
 dataRows.onAPDisconnect.box.mClick = function () 
     if not(dataRows.onAPDisconnect.box.bClicked) then dataRows.onAPDisconnect.bActive = false end
-    return nil
 end
 dataRows.onFuelFlow.box.mClick = function () 
     dataRows.onFuelFlow.bActive = dataRows.onFuelFlow.box.bClicked
-    return nil
 end
 dataRows.onStall.box.mClick = function () 
     dataRows.onStall.bActive = dataRows.onStall.box.bClicked
-    return nil
 end
 function B2PauseTimer_mouseClick()
     if (MOUSE_STATUS == "up") then if (bDragging) then bComputeBoxes = true end bDragging = false end
@@ -625,9 +602,6 @@ function B2PauseTimer_everyDraw()
     -- OpenGL graphics state initialization
     XPLMSetGraphicsState(0,0,0,1,1,0,0)
     graphics.set_width(1)  -- protect against any previous settings
-
-    draw_string(200,SCREEN_HIGHT-100,tmpStr,"yellow")
-    draw_string(200,SCREEN_HIGHT-100,tmpStr2,"yellow")
 
     if (b2pt_bWeCausedPause) then bDrawControlBox = true end
 
