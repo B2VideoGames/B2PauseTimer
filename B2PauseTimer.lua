@@ -9,11 +9,18 @@ local tmpStr2 = ""
 dataref("b2pt_agl", "sim/flightmodel/position/y_agl")
 dataref("b2pt_dist", "sim/flightmodel/controls/dist")
 
-local snapMainX = SCREEN_WIDTH - 225
+local wgtW = 120            -- designed: 105
+local wgtRowH = 30          -- designed:  25
+local tBoxH = wgtRowH - 14
+local perDigital = 0.70
+local perDigitsPad = 10
+
+local snapMainX = SCREEN_WIDTH - 120 - wgtW
 local snapMainY = SCREEN_HIGHT - 25
 local mainX = snapMainX
 local mainY = snapMainY
 local mainY2 = SCREEN_HIGHT              -- lowest coor 'y' we draw to
+
 local bDrawControlBox = false
 local bDragging = false
 local bScreenSizeChanged = true
@@ -35,9 +42,9 @@ local b2pt_minFuelFlow = 0.00001
 
 
 -- dataRows 
-local dataRows = {onTime         = {name="...on Time",      bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt={x=0, y=0, height=115, drawFunc, mWheel}, pauseCheck},
-                  onAltitude     = {name="...on Altitude",  bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt={x=0, y=0, height=45, drawFunc, mWheel}, pauseCheck},
-                  onDistance     = {name="...on Distance",  bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt={x=0, y=0, height=45, drawFunc, mWheel}, pauseCheck},
+local dataRows = {onTime         = {name="...on Time",      bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt={x=0, y=0, height=(wgtRowH*3)+40, drawFunc, mWheel}, pauseCheck},
+                  onAltitude     = {name="...on Altitude",  bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt={x=0, y=0, height=wgtRowH+20, drawFunc, mWheel}, pauseCheck},
+                  onDistance     = {name="...on Distance",  bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt={x=0, y=0, height=wgtRowH+20, drawFunc, mWheel}, pauseCheck},
                   onAPDisconnect = {name="...on AP Disco",  bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt=nil, pauseCheck},
                   onFuelFlow     = {name="...on Fuel Flow", bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt=nil, pauseCheck},
                   onStall        = {name="...on Stall",     bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt=nil, pauseCheck}
@@ -128,13 +135,14 @@ function B2PauseTimer_DrawDots(x,y,cumW,cumH,colorNum)
     B2PauseTimer_DrawDot(x+(0.50*cumW),y-(0.25*cumH),cumW*0.35,cumW*0.35,colorNum)
     B2PauseTimer_DrawDot(x+(0.50*cumW),y-(0.75*cumH),cumW*0.35,cumW*0.35,colorNum)
 end
-function B2PauseTimer_DrawTime(hr,m,x,y,oWdth,oHgt,bTimer)
-    local cWdth = math.floor(oWdth / 4.25)
+function B2PauseTimer_DrawTime(hr,m,xIn,y,oWdth,oHgt,bTimer)
+    local cWdth = math.floor(oWdth / 5)
     local colorNum = 7
     if (dataRows.onTime.bActive and bTimer) then
         colorNum = 11
     end
 
+    local x = xIn + oWdth - (cWdth*4.25)
     B2PauseTimer_DrawNumber(x+(cWdth*0.0),y,cWdth,oHgt,math.floor(hr/10),colorNum)  
     B2PauseTimer_DrawNumber(x+(cWdth*1.0),y,cWdth,oHgt,hr % 10,colorNum)            
     if (os.time() % 2 == 1) then
@@ -145,13 +153,14 @@ function B2PauseTimer_DrawTime(hr,m,x,y,oWdth,oHgt,bTimer)
     B2PauseTimer_DrawNumber(x+(cWdth*2.25),y,cWdth,oHgt,math.floor(m/10),colorNum)   
     B2PauseTimer_DrawNumber(x+(cWdth*3.25),y,cWdth,oHgt,m % 10,colorNum)                         
 end
-function B2PauseTimer_DrawAlt(alt,x,y,oWdth,oHgt)
+function B2PauseTimer_DrawAlt(alt,xIn,y,oWdth,oHgt)
     local colorNum = 7
     local cWdth = math.floor(oWdth / 5)
     if (alt < 0) then alt = 0 end
     if (alt > 99999) then alt = 99999 end
 
     if (dataRows.onAltitude.bActive) then colorNum = 11 end 
+    local x = xIn + oWdth - (cWdth*5)
 
     B2PauseTimer_DrawNumber(x+(cWdth*0),y,cWdth,oHgt,math.floor((alt%100000)/10000),colorNum)
     B2PauseTimer_DrawNumber(x+(cWdth*1),y,cWdth,oHgt,math.floor((alt%10000)/1000),colorNum)
@@ -159,20 +168,21 @@ function B2PauseTimer_DrawAlt(alt,x,y,oWdth,oHgt)
     B2PauseTimer_DrawNumber(x+(cWdth*3),y,cWdth,oHgt,math.floor((alt%100)/10),colorNum)
     B2PauseTimer_DrawNumber(x+(cWdth*4),y,cWdth,oHgt,math.floor((alt%10)/1),colorNum)
 end
-function B2PauseTimer_DrawDist(dist,x,y,oWdth,oHgt)
+function B2PauseTimer_DrawDist(dist,xIn,y,oWdth,oHgt)
     -- dist given in nm
     local nm = math.ceil(dist) -- round up
     local colorNum = 7
-    local cWdth = math.floor(oWdth / 4)
+    local cWdth = math.floor(oWdth / 5)
     if (nm < 0) then nm = 0 end
     if (nm > 9999) then nm = 9999 end
+    local x = xIn + oWdth - (cWdth*4)
 
     if (dataRows.onDistance.bActive) then colorNum = 11 end 
 
-    B2PauseTimer_DrawNumber(x+(cWdth*1),y,cWdth,oHgt,math.floor((nm%10000)/1000),colorNum)
-    B2PauseTimer_DrawNumber(x+(cWdth*2),y,cWdth,oHgt,math.floor((nm%1000)/100),colorNum)
-    B2PauseTimer_DrawNumber(x+(cWdth*3),y,cWdth,oHgt,math.floor((nm%100)/10),colorNum)
-    B2PauseTimer_DrawNumber(x+(cWdth*4),y,cWdth,oHgt,math.floor((nm%10)/1),colorNum)
+    B2PauseTimer_DrawNumber(x+(cWdth*0),y,cWdth,oHgt,math.floor((nm%10000)/1000),colorNum)
+    B2PauseTimer_DrawNumber(x+(cWdth*1),y,cWdth,oHgt,math.floor((nm%1000)/100),colorNum)
+    B2PauseTimer_DrawNumber(x+(cWdth*2),y,cWdth,oHgt,math.floor((nm%100)/10),colorNum)
+    B2PauseTimer_DrawNumber(x+(cWdth*3),y,cWdth,oHgt,math.floor((nm%10)/1),colorNum)
 end
 function B2PauseTimer_DrawToggleBox(x,y,oWdth,oHgt,active)
     B2PauseTimer_DrawHorizontal(x+(0.10*oWdth),y-(0.30*oHgt),oWdth*0.80,oHgt*0.02,true,1)
@@ -206,9 +216,9 @@ function B2PauseTimer_DrawCircle(x,y,radius,colorNum,bFilled)
 end
 function B2PauseTimer_DrawToggleRow(x,y,row) -- standard toggle box row
     if (row.bActive) then 
-        B2PauseTimer_DrawBoxSolid(x,y,x+105,y-15,3)         -- background, color 3
+        B2PauseTimer_DrawBoxSolid(x,y,x+wgtW,y-wgtRowH+10,3)         -- background, color 3
     else
-        B2PauseTimer_DrawBoxSolid(x,y,x+105,y-15,8)         -- background, color 8
+        B2PauseTimer_DrawBoxSolid(x,y,x+wgtW,y-wgtRowH+10,8)         -- background, color 8
     end
     local flashColor = 3
     local flashWidth = 1
@@ -218,27 +228,38 @@ function B2PauseTimer_DrawToggleRow(x,y,row) -- standard toggle box row
             flashWidth = 2
         end
     end
-    B2PauseTimer_DrawBoxBorder(x,y,x+105,y-15,flashWidth,flashColor)      -- background border, width/color variable
-    B2PauseTimer_DrawBoxSolid(x+91,y-3,x+102,y-12,6)    -- toggle box, color 6
-    B2PauseTimer_DrawBoxBorder(x+91,y-3,x+102,y-12,1,5) -- toggle box border, width 1, color 5
-    draw_string(x+4,y-11,row.name,239/255,219/255,172/255)
-    if (row.box.bClicked) then
-        B2PauseTimer_DrawBoxSolid(x+93,y-5,x+100,y-10,2)    -- toggle box active, color 2
+    B2PauseTimer_DrawBoxBorder(x,y,x+wgtW,y-wgtRowH+10,flashWidth,flashColor)      -- background border, width/color variable
+
+    -- if opt exists draw pulldown, otherwise box
+    if (row.opt) then
+        B2PauseTimer_SetColor(7)
+        if (row.box.bClicked) then B2PauseTimer_SetColor(5) end
+        graphics.set_width(2)
+        graphics.draw_line(x+wgtW-tBoxH-3,y-3,x+wgtW-3,y-3)
+        graphics.draw_line(x+wgtW-3,y-3,x+wgtW-3-(tBoxH/2),y-wgtRowH+13)
+        graphics.draw_line(x+wgtW-3-(tBoxH/2),y-wgtRowH+13,x+wgtW-tBoxH-3,y-3)
+    else
+        B2PauseTimer_DrawBoxSolid(x+wgtW-tBoxH-3,y-3,x+wgtW-3,y-wgtRowH+13,6)    -- toggle box, color 6
+        B2PauseTimer_DrawBoxBorder(x+wgtW-tBoxH-3,y-3,x+wgtW-3,y-wgtRowH+13,1,5) -- toggle box border, width 1, color 5
+        if (row.box.bClicked) then
+            B2PauseTimer_DrawBoxSolid(x+wgtW-tBoxH-1,y-5,x+wgtW-5,y-wgtRowH+15,2)    -- toggle box active, color 2
+        end
     end
-    if (bComputeBoxes) then -- store location of the toggle boxes
-        row.box.x = x+91
+    draw_string(x+4,y-(wgtRowH/2),row.name,239/255,219/255,172/255)
+    if (bComputeBoxes) then -- store location of the toggle zones
+        row.box.x = x+wgtW-tBoxH-3
         row.box.y = y-3
-        if (mainY2 > y - 15) then mainY2 = y - 15 end -- store absolute lowest of drawn area
+        if (mainY2 > y - wgtRowH+10) then mainY2 = y - wgtRowH+10 end -- store absolute lowest of drawn area
     end
-    return y - 15   -- return bottom of box we drew
+    return y - wgtRowH+10   -- return bottom of box we drew
 end
 function B2PauseTimer_DrawOptionalRow(x,yIn,row,colorNum) -- toggle box of optional height
     local y = yIn
     if (row.box.bClicked and row.opt) then
         if (row.bActive) then 
-            B2PauseTimer_DrawBoxSolid(x,y,x+105,y-row.opt.height,3)      -- background, color 3
+            B2PauseTimer_DrawBoxSolid(x,y,x+wgtW,y-row.opt.height,3)      -- background, color 3
         else
-            B2PauseTimer_DrawBoxSolid(x,y,x+105,y-row.opt.height,8)      -- background, color 8
+            B2PauseTimer_DrawBoxSolid(x,y,x+wgtW,y-row.opt.height,8)      -- background, color 8
         end
 
         local flashColor = 3
@@ -249,7 +270,7 @@ function B2PauseTimer_DrawOptionalRow(x,yIn,row,colorNum) -- toggle box of optio
                 flashWidth = 2
             end
         end
-        B2PauseTimer_DrawBoxBorder(x,y,x+105,y-row.opt.height,flashWidth,flashColor)   -- background border, width/color variable
+        B2PauseTimer_DrawBoxBorder(x,y,x+wgtW,y-row.opt.height,flashWidth,flashColor)   -- background border, width/color variable
         if (bComputeBoxes) then -- store location of the optional boxes
             row.opt.x = x
             row.opt.y = yIn
@@ -339,39 +360,44 @@ dataRows.onTime.opt.drawFunc = function()
 
 -- time
     B2PauseTimer_DrawTime (tTime["hour"],
-                            tTime["min"],dataRows.onTime.opt.x+15,
-                            y-10,74.4,25,false)
-    y = y - 10 - 25  --offset and char height
+                            tTime["min"],dataRows.onTime.opt.x+5,
+                            y-10,wgtW*perDigital,wgtRowH,false)
+    draw_string(dataRows.onTime.opt.x + (wgtW*perDigital)+perDigitsPad,y-(wgtRowH*1.0),"Crnt",239/255,219/255,172/255)
+    y = y - 10 - wgtRowH  --offset and char height
 
 --pause time
     if (b2pt_epochTimePause == 0) then
-        B2PauseTimer_DrawTime(tTime["hour"],tTime["min"],dataRows.onTime.opt.x+15,y-10,74.4,25,false)
+        B2PauseTimer_DrawTime(tTime["hour"],tTime["min"],dataRows.onTime.opt.x+5,y-10,wgtW*perDigital,wgtRowH,false)
     else
-        B2PauseTimer_DrawTime(os.date("%H",b2pt_epochTimePause),os.date("%M",b2pt_epochTimePause),dataRows.onTime.opt.x+15,y-10,74.4,25,true)
+        B2PauseTimer_DrawTime(os.date("%H",b2pt_epochTimePause),os.date("%M",b2pt_epochTimePause),dataRows.onTime.opt.x+10,y-10,wgtW*perDigital,wgtRowH,true)
     end
-    y = y - 10 - 25  --offset and char height
+    draw_string(dataRows.onTime.opt.x + (wgtW*perDigital)+perDigitsPad,y-(wgtRowH*1.0),"P At",239/255,219/255,172/255)
+    y = y - 10 - wgtRowH  --offset and char height
 
 --time from now
     if (b2pt_epochTimePause == 0) then
-        B2PauseTimer_DrawTime(0,0,dataRows.onTime.opt.x+15,y-10,74.4,25,false)
+        B2PauseTimer_DrawTime(0,0,dataRows.onTime.opt.x+5,y-10,wgtW*perDigital,wgtRowH,false)
     else
-        B2PauseTimer_DrawTime(math.floor(minsUntilPause/60),minsUntilPause%60,dataRows.onTime.opt.x+15,y-10,74.4,25,true)
+        B2PauseTimer_DrawTime(math.floor(minsUntilPause/60),minsUntilPause%60,dataRows.onTime.opt.x+10,y-10,wgtW*perDigital,wgtRowH,true)
     end
+    draw_string(dataRows.onTime.opt.x + (wgtW*perDigital)+perDigitsPad,y-(wgtRowH*1.0),"P In",239/255,219/255,172/255)
 end
 dataRows.onAltitude.opt.drawFunc = function()
     local agl = b2pt_aglToPause
     if (b2pt_aglToPause == 0) then agl = B2PauseTimer_Meter2Feet(b2pt_agl) end
-    B2PauseTimer_DrawAlt(agl,dataRows.onAltitude.opt.x + 15,dataRows.onAltitude.opt.y - 10 , 87, 25)
+    B2PauseTimer_DrawAlt(agl,dataRows.onAltitude.opt.x + 5,dataRows.onAltitude.opt.y - 10 , wgtW*perDigital, wgtRowH)
+    draw_string(dataRows.onAltitude.opt.x + (wgtW*perDigital)+perDigitsPad,dataRows.onAltitude.opt.y-(wgtRowH*1.0),"AGL",239/255,219/255,172/255)
 end
 dataRows.onDistance.opt.drawFunc = function()
     local dist = b2pt_distToPause
     if not(b2pt_distToPause == 0) then dist = b2pt_distToPause - B2PauseTimer_Meter2NM(b2pt_dist) end
-    B2PauseTimer_DrawDist(dist, dataRows.onDistance.opt.x + 20,dataRows.onDistance.opt.y - 10, 67, 25)
+    B2PauseTimer_DrawDist(dist, dataRows.onDistance.opt.x + 5,dataRows.onDistance.opt.y - 10, wgtW*perDigital, wgtRowH)
+    draw_string(dataRows.onDistance.opt.x + (wgtW*perDigital)+perDigitsPad,dataRows.onDistance.opt.y-(wgtRowH*1.0),"NM",239/255,219/255,172/255)
 end
 
 dataRows.onTime.opt.mWheel = function()
     local timeChange = 60 -- in secs
-    if (MOUSE_X < dataRows.onTime.opt.x+50) then -- adjust or calc off where the 'dots' are
+    if (MOUSE_X < dataRows.onTime.opt.x+(wgtW*0.50)) then -- adjust or calc off where the 'dots' are
         timeChange = 3600 -- in secs
     end
 
@@ -398,9 +424,14 @@ dataRows.onTime.opt.mWheel = function()
     end
 end
 dataRows.onAltitude.opt.mWheel = function()
-    if (b2pt_aglToPause == 0) then b2pt_aglToPause = math.floor(B2PauseTimer_Meter2Feet(b2pt_agl)/100)*100 end
+    if (b2pt_aglToPause == 0) then
+        b2pt_aglToPause = math.max(math.floor(B2PauseTimer_Meter2Feet(b2pt_agl)/100)*100,0)
+    end
     b2pt_aglToPause = math.max(b2pt_aglToPause + (MOUSE_WHEEL_CLICKS * 100),0)
-    if (math.abs(b2pt_aglToPause - B2PauseTimer_Meter2Feet(b2pt_agl)) > 250) then dataRows.onAltitude.bActive = true end
+    if (math.abs(b2pt_aglToPause - B2PauseTimer_Meter2Feet(b2pt_agl)) > 250) then
+        dataRows.onAltitude.bActive = true
+        b2pt_prevAglChecked = 0
+    end
     if (dataRows.onAltitude.bActive and b2pt_aglToPause <= 0) then
         b2pt_aglToPause = 0
         dataRows.onAltitude.bActive = false
@@ -420,7 +451,7 @@ function B2PauseTimer_onMouseWheel()
     if (bDrawControlBox) then
         for k,val in pairs(dataRows) do
             if (val.box.bClicked and val.opt) then 
-                if ( MOUSE_X > val.opt.x and MOUSE_X < val.opt.x+105 and
+                if ( MOUSE_X > val.opt.x and MOUSE_X < val.opt.x+wgtW and
                      MOUSE_Y < val.opt.y and MOUSE_Y > val.opt.y - val.opt.height) then
                     val.opt.mWheel()
                     RESUME_MOUSE_WHEEL = true
@@ -430,7 +461,6 @@ function B2PauseTimer_onMouseWheel()
         end
     end
 end
-
 
 dataRows.onTime.box.mClick = function () 
     b2pt_epochTimePause = 0
@@ -464,8 +494,8 @@ function B2PauseTimer_mouseClick()
 
     if (MOUSE_STATUS == "down" and bDrawControlBox) then
         for k,val in pairs(dataRows) do
-            if ( MOUSE_X > val.box.x and MOUSE_X < val.box.x+11 and
-                 MOUSE_Y < val.box.y and MOUSE_Y > val.box.y-11) then
+            if ( MOUSE_X > val.box.x and MOUSE_X < val.box.x+tBoxH and
+                 MOUSE_Y < val.box.y and MOUSE_Y > val.box.y-wgtRowH+14) then
                 val.box.bClicked = not val.box.bClicked
                 val.box.mClick()
                 RESUME_MOUSE_CLICK = true
@@ -477,7 +507,7 @@ function B2PauseTimer_mouseClick()
 
     -- check if position over our toggle icon
     if (MOUSE_STATUS == "down" and 
-        MOUSE_X >= (mainX+55) and MOUSE_X <= (mainX+105) and 
+        MOUSE_X >= (mainX+55) and MOUSE_X <= (mainX+wgtW) and 
         MOUSE_Y >= (mainY-24) and MOUSE_Y <= (mainY)) then
         RESUME_MOUSE_CLICK = true
         if (b2pt_bWeCausedPause) then b2pt_bWeCausedPause = nil end
@@ -510,9 +540,9 @@ function B2PauseTimer_mouseClick()
 end
 
 function B2PauseTimer_everySec()
-    if not(snapMainX == (SCREEN_WIDTH - 225)) then
+    if not(snapMainX == (SCREEN_WIDTH - 120 - wgtW)) then
         bScreenSizeChanged = true
-        snapMainX = SCREEN_WIDTH - 225
+        snapMainX = SCREEN_WIDTH - 120 - wgtW
         bComputeBoxes = true
     end
     if not(snapMainY == (SCREEN_HIGHT - 25)) then
@@ -546,13 +576,13 @@ function B2PauseTimer_everySec()
         end
     else -- manual position
         -- make sure we aren't drawing off the screen
-        -- X:: from mainX to mainX+105
+        -- X:: from mainX to mainX+wgtW
         -- Y:: from mainY to mainY-200
         if (mainX < 0) then
             mainX = 0
             bComputeBoxes = true
-        elseif (mainX+105 > SCREEN_WIDTH) then 
-            mainX = SCREEN_WIDTH-105
+        elseif (mainX+wgtW > SCREEN_WIDTH) then 
+            mainX = SCREEN_WIDTH-wgtW
             bComputeBoxes = true
         end
         if (mainY2 < 0) then
@@ -577,6 +607,9 @@ function B2PauseTimer_everyDraw()
     XPLMSetGraphicsState(0,0,0,1,1,0,0)
     graphics.set_width(1)  -- protect against any previous settings
 
+    draw_string(200,SCREEN_HIGHT-100,tmpStr,"yellow")
+    draw_string(200,SCREEN_HIGHT-100,tmpStr2,"yellow")
+
     if (b2pt_bWeCausedPause) then bDrawControlBox = true end
 
     if (bDrawControlBox == true or
@@ -585,10 +618,10 @@ function B2PauseTimer_everyDraw()
         -- always draw clickable pause icon, active gets different color
         local colorNum = 3
         if (bDrawControlBox == true) then colorNum = 7 end
-        B2PauseTimer_DrawBoxSolid(mainX+75,mainY-3,mainX+86,mainY-27,colorNum)
-        B2PauseTimer_DrawBoxSolid(mainX+89,mainY-3,mainX+100,mainY-27,colorNum)
-        B2PauseTimer_DrawBoxBorder(mainX+75,mainY-3,mainX+86,mainY-27,1,4)
-        B2PauseTimer_DrawBoxBorder(mainX+89,mainY-3,mainX+100,mainY-27,1,4)
+        B2PauseTimer_DrawBoxSolid(mainX+wgtW-30,mainY-3,mainX+wgtW-19,mainY-27,colorNum)
+        B2PauseTimer_DrawBoxSolid(mainX+wgtW-16,mainY-3,mainX+wgtW-5,mainY-27,colorNum)
+        B2PauseTimer_DrawBoxBorder(mainX+wgtW-30,mainY-3,mainX+wgtW-19,mainY-27,1,4)
+        B2PauseTimer_DrawBoxBorder(mainX+wgtW-16,mainY-3,mainX+wgtW-5,mainY-27,1,4)
     end
 
     if (bDrawControlBox == true) then
