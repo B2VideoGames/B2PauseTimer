@@ -42,9 +42,9 @@ local b2pt_minFuelFlow = 0.00001
 
 
 -- dataRows 
-local dataRows = {onTime         = {name="...on Time",      bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt={x=0, y=0, height=(wgtRowH*3)+40, drawFunc, mWheel}, pauseCheck},
-                  onAltitude     = {name="...on Altitude",  bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt={x=0, y=0, height=wgtRowH+20, drawFunc, mWheel}, pauseCheck},
-                  onDistance     = {name="...on Distance",  bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt={x=0, y=0, height=wgtRowH+20, drawFunc, mWheel}, pauseCheck},
+local dataRows = {onTime         = {name="...on Time",      bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt={x=0, y=0, height=(wgtRowH*3)+40, drawFunc, mWheel, mClick}, pauseCheck},
+                  onAltitude     = {name="...on Altitude",  bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt={x=0, y=0, height=wgtRowH+20, drawFunc, mWheel, mClick}, pauseCheck},
+                  onDistance     = {name="...on Distance",  bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt={x=0, y=0, height=wgtRowH+20, drawFunc, mWheel, mClick}, pauseCheck},
                   onAPDisconnect = {name="...on AP Disco",  bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt=nil, pauseCheck},
                   onFuelFlow     = {name="...on Fuel Flow", bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt=nil, pauseCheck},
                   onStall        = {name="...on Stall",     bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt=nil, pauseCheck}
@@ -462,19 +462,29 @@ function B2PauseTimer_onMouseWheel()
     end
 end
 
-dataRows.onTime.box.mClick = function () 
+dataRows.onTime.opt.mClick = function () 
     b2pt_epochTimePause = 0
-    if not(dataRows.onTime.box.bClicked) then dataRows.onTime.bActive = false end
+    dataRows.onTime.bActive = false
+    return nil
+end
+dataRows.onAltitude.opt.mClick = function () 
+    b2pt_aglToPause = 0
+    dataRows.onAltitude.bActive = false
+    return nil
+end
+dataRows.onDistance.opt.mClick = function () 
+    b2pt_distToPause = 0
+    dataRows.onDistance.bActive = false
+    return nil
+end
+
+dataRows.onTime.box.mClick = function () 
     return nil
 end
 dataRows.onAltitude.box.mClick = function () 
-    b2pt_aglToPause = 0
-    if not (dataRows.onAltitude.box.bClicked) then dataRows.onAltitude.bActive = false end
     return nil
 end
 dataRows.onDistance.box.mClick = function () 
-    b2pt_distToPause = 0
-    if not(dataRows.onDistance.box.bClicked) then dataRows.onDistance.bActive = false end
     return nil
 end
 dataRows.onAPDisconnect.box.mClick = function () 
@@ -502,6 +512,15 @@ function B2PauseTimer_mouseClick()
                 bComputeBoxes = true        -- click changes locations of everything
                 return
             end
+            if (val.box.bClicked and val.opt) then 
+                if ( MOUSE_X > val.opt.x and MOUSE_X < val.opt.x+wgtW and
+                     MOUSE_Y < val.opt.y and MOUSE_Y > val.opt.y - val.opt.height) then
+                    val.opt.mClick()
+                    RESUME_MOUSE_CLICK = true
+                    return
+                end
+            end
+
         end
     end
 
