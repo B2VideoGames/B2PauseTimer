@@ -10,7 +10,7 @@ local wgtW = 120            -- designed: 105
 local wgtRowH = 30          -- designed:  25
 local tBoxH = wgtRowH - 14
 local perDigital = 0.70
-local perDigitsPad = 10
+local perDigitsPad = 8
 
 local snapMainX = SCREEN_WIDTH - 120 - wgtW
 local snapMainY = SCREEN_HIGHT - 25
@@ -347,7 +347,9 @@ dataRows.onTime.opt.drawFunc = function()
     B2PauseTimer_DrawTime (tTime["hour"],
                             tTime["min"],dataRows.onTime.opt.x+5,
                             y-10,wgtW*perDigital,wgtRowH,false)
-    draw_string(dataRows.onTime.opt.x + (wgtW*perDigital)+perDigitsPad,y-(wgtRowH*1.0),"Crnt",239/255,219/255,172/255)
+--    draw_string(dataRows.onTime.opt.x + (wgtW*perDigital)+perDigitsPad,y-(wgtRowH*1.0),"Crnt",239/255,219/255,172/255)
+    glColor4f(239/255,219/255,172/255, 1)
+    draw_string_Helvetica_12(dataRows.onTime.opt.x + (wgtW*perDigital)+perDigitsPad,y-(wgtRowH*1.0),"CUR")
     y = y - 10 - wgtRowH  --offset and char height
 
 --pause time
@@ -356,7 +358,9 @@ dataRows.onTime.opt.drawFunc = function()
     else
         B2PauseTimer_DrawTime(os.date("%H",b2pt_epochTimePause),os.date("%M",b2pt_epochTimePause),dataRows.onTime.opt.x+5,y-10,wgtW*perDigital,wgtRowH,true)
     end
-    draw_string(dataRows.onTime.opt.x + (wgtW*perDigital)+perDigitsPad,y-(wgtRowH*1.0),"P At",239/255,219/255,172/255)
+--    draw_string(dataRows.onTime.opt.x + (wgtW*perDigital)+perDigitsPad,y-(wgtRowH*1.0),"P At",239/255,219/255,172/255)
+    glColor4f(239/255,219/255,172/255, 1)
+    draw_string_Helvetica_12(dataRows.onTime.opt.x + (wgtW*perDigital)+perDigitsPad,y-(wgtRowH*1.0),"-AT")
     y = y - 10 - wgtRowH  --offset and char height
 
 --time from now
@@ -365,19 +369,25 @@ dataRows.onTime.opt.drawFunc = function()
     else
         B2PauseTimer_DrawTime(math.floor(minsUntilPause/60),minsUntilPause%60,dataRows.onTime.opt.x+5,y-10,wgtW*perDigital,wgtRowH,true)
     end
-    draw_string(dataRows.onTime.opt.x + (wgtW*perDigital)+perDigitsPad,y-(wgtRowH*1.0),"P In",239/255,219/255,172/255)
+--    draw_string(dataRows.onTime.opt.x + (wgtW*perDigital)+perDigitsPad,y-(wgtRowH*1.0),"P In",239/255,219/255,172/255)
+    glColor4f(239/255,219/255,172/255, 1)
+    draw_string_Helvetica_12(dataRows.onTime.opt.x + (wgtW*perDigital)+perDigitsPad,y-(wgtRowH*1.0),"-IN")
 end
 dataRows.onAltitude.opt.drawFunc = function()
     local agl = b2pt_aglToPause
     if (b2pt_aglToPause == 0) then agl = B2PauseTimer_Meter2Feet(b2pt_agl) end
     B2PauseTimer_DrawAlt(agl,dataRows.onAltitude.opt.x + 5,dataRows.onAltitude.opt.y - 10 , wgtW*perDigital, wgtRowH)
-    draw_string(dataRows.onAltitude.opt.x + (wgtW*perDigital)+perDigitsPad,dataRows.onAltitude.opt.y-(wgtRowH*1.0),"AGL",239/255,219/255,172/255)
+--    draw_string(dataRows.onAltitude.opt.x + (wgtW*perDigital)+perDigitsPad,dataRows.onAltitude.opt.y-(wgtRowH*1.0),"AGL",239/255,219/255,172/255)
+    glColor4f(239/255,219/255,172/255, 1)
+    draw_string_Helvetica_12(dataRows.onAltitude.opt.x + (wgtW*perDigital)+perDigitsPad,dataRows.onAltitude.opt.y-(wgtRowH*1.0),"AGL")
 end
 dataRows.onDistance.opt.drawFunc = function()
     local dist = b2pt_distToPause
     if not(b2pt_distToPause == 0) then dist = b2pt_distToPause - B2PauseTimer_Meter2NM(b2pt_dist) end
     B2PauseTimer_DrawDist(dist, dataRows.onDistance.opt.x + 5,dataRows.onDistance.opt.y - 10, wgtW*perDigital, wgtRowH)
-    draw_string(dataRows.onDistance.opt.x + (wgtW*perDigital)+perDigitsPad,dataRows.onDistance.opt.y-(wgtRowH*1.0),"NM",239/255,219/255,172/255)
+--    draw_string(dataRows.onDistance.opt.x + (wgtW*perDigital)+perDigitsPad,dataRows.onDistance.opt.y-(wgtRowH*1.0),"NM",239/255,219/255,172/255)
+    glColor4f(239/255,219/255,172/255, 1)
+    draw_string_Helvetica_12(dataRows.onDistance.opt.x + (wgtW*perDigital)+perDigitsPad,dataRows.onDistance.opt.y-(wgtRowH*1.0),"NM")
 end
 
 dataRows.onTime.opt.mWheel = function()
@@ -601,6 +611,14 @@ function B2PauseTimer_everyDraw()
     -- OpenGL graphics state initialization
     XPLMSetGraphicsState(0,0,0,1,1,0,0)
     graphics.set_width(1)  -- protect against any previous settings
+
+--    glColor4f(255/255, 252/255, 89/255, 1)
+--    draw_string(200,SCREEN_HIGHT-150,"AGL","yellow")
+--    glColor4f(255/255, 252/255, 89/255, 1)
+--    draw_string_Helvetica_12(200,SCREEN_HIGHT-180,"AGL")
+--    draw_string_Helvetica_18(250,SCREEN_HIGHT-180,"AGL")
+--    draw_string_Times_Roman_10(200,SCREEN_HIGHT-210,"AGL")
+--    draw_string_Times_Roman_24(250,SCREEN_HIGHT-210,"AGL")
 
     if (b2pt_bWeCausedPause) then bDrawControlBox = true end
 
