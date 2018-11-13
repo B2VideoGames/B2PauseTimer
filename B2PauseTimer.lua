@@ -2,6 +2,7 @@ require "graphics"
 require "math"
 
 local b2pt_SoftwareVersion = 1.0
+local b2pt_FileFormat = 1
 
 dataref("b2pt_agl", "sim/flightmodel/position/y_agl")
 dataref("b2pt_dist", "sim/flightmodel/controls/dist")
@@ -23,6 +24,8 @@ local bDragging = false
 local bScreenSizeChanged = true
 local bAutoPosition = true
 local bComputeBoxes = false
+local bNewLoad = true
+local bSaveRequired = false
 
 local b2pt_epochTimePause = 0
 local b2pt_pauseAltActive = false
@@ -527,6 +530,7 @@ function B2PauseTimer_mouseClick()
         mainX = MOUSE_X - 5
         mainY = MOUSE_Y + 15
         bAutoPosition = false
+        bSaveRequired = true
 
         -- see if we are 'close enough' to original default to snap in place
         if (mainX > snapMainX - 20 and mainX < snapMainX + 20 and 
@@ -536,6 +540,14 @@ function B2PauseTimer_mouseClick()
             bAutoPosition = true
         end
         return
+    end
+
+
+    -- check if position over our save icon
+    if (MOUSE_STATUS == "down" and 
+        MOUSE_X >= (mainX+26) and MOUSE_X <= (mainX+45) and 
+        MOUSE_Y >= (mainY-24) and MOUSE_Y <= (mainY-8)) then
+        B2PauseTimer_SaveModifiedConfig()
     end
 end
 
@@ -607,6 +619,11 @@ function B2PauseTimer_everyDraw()
     XPLMSetGraphicsState(0,0,0,1,1,0,0)
     graphics.set_width(1)  -- protect against any previous settings
 
+    if (bNewLoad) then
+        B2PauseTimer_OpenParseConfig()
+        bNewLoad = false
+    end
+
     if (b2pt_bWeCausedPause) then bDrawControlBox = true end
 
     if (bDrawControlBox == true or
@@ -625,6 +642,23 @@ function B2PauseTimer_everyDraw()
         -- draw 'drag' wheel (when this small, two solids look better than solid w/ border)
         B2PauseTimer_DrawCircle(mainX+5,mainY-15,5,5,true)
         B2PauseTimer_DrawCircle(mainX+5,mainY-15,4,6,true)
+
+        -- draw 'save' icon
+        if (bSaveRequired == true) then
+            graphics.set_color(1,0,0,0.5) -- red border
+        else
+            graphics.set_color(0,1,0,0.5) -- green border
+        end
+        graphics.set_width(1)
+        graphics.draw_triangle(mainX+35,mainY-18,mainX+28,mainY-8,mainX+42,mainY-8)
+        graphics.draw_line(mainX+26,mainY-16,mainX+26,mainY-24)
+        graphics.draw_line(mainX+26,mainY-24,mainX+44,mainY-24)
+        graphics.draw_line(mainX+44,mainY-24,mainX+44,mainY-16)
+        graphics.set_color(0,0,0,0.5) -- fill in color
+        graphics.draw_triangle(mainX+35,mainY-15,mainX+30,mainY-9,mainX+40,mainY-9)
+        graphics.draw_line(mainX+27,mainY-16,mainX+27,mainY-23)
+        graphics.draw_line(mainX+27,mainY-23,mainX+43,mainY-23)
+        graphics.draw_line(mainX+43,mainY-23,mainX+43,mainY-16)
 
     local x = mainX
     local y = mainY-35
@@ -650,4 +684,60 @@ function B2PauseTimer_everyDraw()
     end
 end
 
+function B2PauseTimer_OpenParseConfig()
+    local configFile = io.open(SCRIPT_DIRECTORY .. "B2PauseTimer.dat","r")
+    if not(configFile) then             -- if no config file, just return now
+        return
+    end
 
+    local tmpStr = configFile:read("*all")
+    configFile:close()
+
+    local fileVersion = nil
+    local fileX = nil
+    local fileY = nil
+    
+    for i in string.gfind(tmpStr,"%s*(.-)\n") do
+        if (fileVersion == nil) then _,_,fileVersion = string.find(i, "VERSION%s+(%d+)") end
+        if (fileX == nil and fileY == nil) then 
+            _,_,fileX,fileY = string.find(i, "X:%s*(%d+)%s+Y:%s*(%d+)")
+            if (fileX and fileY) then
+                fileX = tonumber(fileX)
+                fileY = tonumber(fileY)
+                if (fileX and fileX >= 0 and fileX <= SCREEN_WIDTH and
+                    fileY and fileY >= 0 and fileY <= SCREEN_HIGHT) then
+                    mainX = fileX
+                    mainY = fileY
+                    bAutoPosition = false
+                    bScreenSizeChanged = true
+                end
+            end
+        end
+    end
+end
+
+function B2PauseTimer_SaveModifiedConfig()
+    local oldStr = nil  -- where we'll store all the data from the previous config file
+    local newStr = nil  -- where we'll store all the data to write to the config file
+
+    local configFile = io.open(SCRIPT_DIRECTORY .. "B2PauseTimer.dat","r")
+    if (configFile) then
+        oldStr = configFile:read("*all")
+        configFile:close()
+    end
+
+    -- store file format version
+    newStr = string.format("VERSION " .. b2pt_FileFormat .. "\n")
+
+    -- if user moved the widget manually, store where they want it
+    if not(bAutoPosition) then
+        newStr = string.format(newStr .. "X:" .. mainX .. " Y:" .. mainY .. "\n")
+    end
+
+    configFile = io.open(SCRIPT_DIRECTORY .. "B2PauseTimer.dat","w")
+    if not(configFile) then return end      -- error handled
+    io.output(configFile)
+    io.write(newStr)
+    configFile:close()
+    bSaveRequired = false
+end
