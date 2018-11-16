@@ -260,7 +260,7 @@ function B2PauseTimer_DrawOptionalRow(x,yIn,row,colorNum) -- toggle box of optio
             end
         end
         B2PauseTimer_DrawBoxBorder(x,y,x+wgtW,y-row.opt.height,flashWidth,flashColor)   -- background border, width/color variable
-        if (bComputeBoxes) then -- store location of the optional boxes
+        if (bDragging or bComputeBoxes) then -- store location of the optional boxes
             row.opt.x = x
             row.opt.y = yIn
         end
@@ -660,11 +660,11 @@ function B2PauseTimer_everyDraw()
         graphics.draw_line(mainX+27,mainY-23,mainX+43,mainY-23)
         graphics.draw_line(mainX+43,mainY-23,mainX+43,mainY-16)
 
-    local x = mainX
-    local y = mainY-35
-    graphics.set_width(1)  -- protect against any previous settings
+        local x = mainX
+        local y = mainY-35
+        graphics.set_width(1)  -- protect against any previous settings
 
-    if (bComputeBoxes) then mainY2 = SCREEN_HIGHT end -- require new position of mainY2
+        if (bComputeBoxes) then mainY2 = SCREEN_HIGHT end -- require new position of mainY2
         y = B2PauseTimer_DrawToggleRow(x,y,dataRows.onTime)
         y = B2PauseTimer_DrawOptionalRow(x,y,dataRows.onTime,8)
         y = B2PauseTimer_DrawToggleRow(x,y,dataRows.onAltitude)
