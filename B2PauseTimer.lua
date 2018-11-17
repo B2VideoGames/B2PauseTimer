@@ -1,14 +1,73 @@
 require "graphics"
 require "math"
 
+-- B2PauseTimer.lua
+--   To be used in conjunction with X-Plane's FlyWithLua scripting package
+--   Developed with FlyWithLua Complete v2.6.7 (other versions likely work, but untested)
+-- 
+--   Place B2PauseTimer.lua in your FlyWithLua scripts folder
+--      path:    ...\X-Plane 11\Resources\plugins\FlyWithLua\Scripts\
+--
+--   ** This script will allow you to set various reasons to automatically pause the simulator
+--   ** PLEASE be careful when using on 'multiplayer' networks, as they generally frown on sim pausing
+--
+--   To activate :: move your mouse to upper right corner of the screen
+--                      and click on the magically appearing 'pause icon'
+--   To hide     :: just click the 'pause icon' again and it'll hide the widget from view, but still function
+--   To move     :: click and drag the upper left circle icon to a new location
+--   To save     :: if dragged to new location, can save the absolute position of the widget
+--                      by clicking the red 'save' icon
+--
+--   To pause :: on Time                    - pulldown, mouse wheel for value (active after a few clicks), adjust
+--                                            by minutes or hours, up to 24hrs in future, will pause when the
+--                                            local PC time matches the value
+--   To pause :: on Altitude                - pulldown, mouse wheel for value (active after a few clicks), will
+--                                            pause when plane reaches (passes through) given altitude AGL
+--                                            note: AGL and not MSL as design was to prevent crashing into 
+--                                              terrain more than reaching flight level
+--   To pause :: on Distance                - pulldown, mouse wheel for value (active after a few clicks), will
+--                                            pause when the plane travels computed distance from when enabled, 
+--                                            computed as distance traveled, not as crow flys
+--   To pause :: on AutoPilot Disconnect    - toggle box, will pause if autopilot is disconnected by user
+--                                            or sim effect (severe weather, stalled plane, etc can cause this)
+--                                            note: if autopilot isn't on when set, toggle box will show 'armed'
+--                                              until autpilot is enabled, then go active
+--   To pause :: on Fuel Flow               - toggle box, will pause if any engine that was receiving fuel
+--                                            stops receiving fuel (engine fire, tank empty, etc)
+--   To pause :: on Stall                   - toggle box, will pause if full stall is reached
+--
+--
+--   Initial version 1:   Nov 2018    B2_   pause widget release
+--
+--
+---- Copyright (c) 2018 B2VideoGames@gmail.com
+--  Permission is hereby granted, free of charge, to any person obtaining a copy
+--  of this software and associated documentation files (the "Software"), to deal
+--  in the Software without restriction, including without limitation the rights
+--  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+--  copies of the Software, and to permit persons to whom the Software is
+--  furnished to do so, subject to the following conditions:
+--  
+--  The above copyright notice and this permission notice shall be included in all
+--  copies or substantial portions of the Software.
+--  
+--  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+--  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+--  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+--  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+--  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+--  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+--  SOFTWARE.
+
+
 local b2pt_SoftwareVersion = 1.0
 local b2pt_FileFormat = 1
 
 dataref("b2pt_agl", "sim/flightmodel/position/y_agl")
 dataref("b2pt_dist", "sim/flightmodel/controls/dist")
 
-local wgtW = 120            -- designed: 105
-local wgtRowH = 30          -- designed:  25
+local wgtW = 120
+local wgtRowH = 30
 local tBoxH = wgtRowH - 14
 local perDigital = 0.70
 local perDigitsPad = 8
@@ -28,16 +87,14 @@ local bNewLoad = true
 local bSaveRequired = false
 
 local b2pt_epochTimePause = 0
-local b2pt_pauseAltActive = false
 local b2pt_aglToPause = 0               -- in feet
-local b2pt_prevAglChecked = 0               -- in feet
+local b2pt_prevAglChecked = 0           -- in feet
 local b2pt_distToPause = 0              -- in nm
 local b2pt_bWeCausedPause = nil
 
 local b2pt_fuelFlow = {false,false,false,false,false,false,false,false} -- 8 engines
 local b2pt_minFuelFlow = 0.00001
 
--- dataRows 
 local dataRows = {onTime         = {name="...on Time",      bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt={x=0, y=0, height=(wgtRowH*3)+40, drawFunc, mWheel, mClick}, pauseCheck},
                   onAltitude     = {name="...on Altitude",  bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt={x=0, y=0, height=wgtRowH+20, drawFunc, mWheel, mClick}, pauseCheck},
                   onDistance     = {name="...on Distance",  bActive=false, box={bClicked=false, x=0, y=0, mClick}, opt={x=0, y=0, height=wgtRowH+20, drawFunc, mWheel, mClick}, pauseCheck},
@@ -72,9 +129,6 @@ function B2PauseTimer_Meter2Feet(meter)
 end
 function B2PauseTimer_Meter2NM(meter)
     return meter * 0.000539957
-end
-function B2PauseTimer_NM2Meter(nm)
-    return nm * 1852
 end
 
 function B2PauseTimer_DrawHorizontal(x, y, pixW, pixH, bActive, colorNum)
@@ -242,7 +296,7 @@ function B2PauseTimer_DrawToggleRow(x,y,row) -- standard toggle box row
     end
     return y - wgtRowH+10   -- return bottom of box we drew
 end
-function B2PauseTimer_DrawOptionalRow(x,yIn,row,colorNum) -- toggle box of optional height
+function B2PauseTimer_DrawOptionalRow(x,yIn,row) -- toggle box of optional height
     local y = yIn
     if (row.box.bClicked and row.opt) then
         if (row.bActive) then 
@@ -390,7 +444,7 @@ end
 
 dataRows.onTime.opt.mWheel = function()
     local timeChange = 60 -- in secs
-    if (MOUSE_X < dataRows.onTime.opt.x+(wgtW*0.50)) then -- adjust or calc off where the 'dots' are
+    if (MOUSE_X < dataRows.onTime.opt.x+(wgtW*0.50)) then           -- adjust or calc off where the 'dots' are
         timeChange = 3600 -- in secs
     end
 
@@ -401,13 +455,13 @@ dataRows.onTime.opt.mWheel = function()
     end
 
     local currentTime = os.time()
-    if (b2pt_epochTimePause == 0) then                           -- initialization
+    if (b2pt_epochTimePause == 0) then                              -- initialization
         b2pt_epochTimePause = math.floor(currentTime/60) * 60
     end
 
     b2pt_epochTimePause = b2pt_epochTimePause + (MOUSE_WHEEL_CLICKS * timeChange)
 
-    if (b2pt_epochTimePause > currentTime + 86400) then                  -- protect against 24hr rule
+    if (b2pt_epochTimePause > currentTime + 86400) then             -- protect against 24hr rule
         b2pt_epochTimePause = b2pt_epochTimePause - 86400
     elseif (b2pt_epochTimePause < currentTime) then
         b2pt_epochTimePause = b2pt_epochTimePause + 86400
@@ -542,7 +596,6 @@ function B2PauseTimer_mouseClick()
         return
     end
 
-
     -- check if position over our save icon
     if (MOUSE_STATUS == "down" and 
         MOUSE_X >= (mainX+26) and MOUSE_X <= (mainX+45) and 
@@ -666,11 +719,11 @@ function B2PauseTimer_everyDraw()
 
         if (bComputeBoxes) then mainY2 = SCREEN_HIGHT end -- require new position of mainY2
         y = B2PauseTimer_DrawToggleRow(x,y,dataRows.onTime)
-        y = B2PauseTimer_DrawOptionalRow(x,y,dataRows.onTime,8)
+        y = B2PauseTimer_DrawOptionalRow(x,y,dataRows.onTime)
         y = B2PauseTimer_DrawToggleRow(x,y,dataRows.onAltitude)
-        y = B2PauseTimer_DrawOptionalRow(x,y,dataRows.onAltitude,8)
+        y = B2PauseTimer_DrawOptionalRow(x,y,dataRows.onAltitude)
         y = B2PauseTimer_DrawToggleRow(x,y,dataRows.onDistance)
-        y = B2PauseTimer_DrawOptionalRow(x,y,dataRows.onDistance,8)
+        y = B2PauseTimer_DrawOptionalRow(x,y,dataRows.onDistance)
         y = B2PauseTimer_DrawToggleRow(x,y,dataRows.onAPDisconnect)
         y = B2PauseTimer_DrawToggleRow(x,y,dataRows.onFuelFlow)
         y = B2PauseTimer_DrawToggleRow(x,y,dataRows.onStall)
