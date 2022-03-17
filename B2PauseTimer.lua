@@ -38,6 +38,7 @@ require "math"
 --
 --
 --   Initial version 1:   Nov 2018    B2_   pause widget release
+--           version 1.1: Mar 2022    B2_   change string.gfind to string.gmatch
 --
 --
 ---- Copyright (c) 2018 B2VideoGames@gmail.com
@@ -60,7 +61,7 @@ require "math"
 --  SOFTWARE.
 
 
-local b2pt_SoftwareVersion = 1.0
+local b2pt_SoftwareVersion = 1.1
 local b2pt_FileFormat = 1
 
 dataref("b2pt_agl", "sim/flightmodel/position/y_agl")
@@ -750,7 +751,7 @@ function B2PauseTimer_OpenParseConfig()
     local fileX = nil
     local fileY = nil
     
-    for i in string.gfind(tmpStr,"%s*(.-)\n") do
+    for i in string.gmatch(tmpStr,"%s*(.-)\n") do
         if (fileVersion == nil) then _,_,fileVersion = string.find(i, "VERSION%s+(%d+)") end
         if (fileX == nil and fileY == nil) then 
             _,_,fileX,fileY = string.find(i, "X:%s*(%d+)%s+Y:%s*(%d+)")
